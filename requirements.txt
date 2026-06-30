@@ -1,0 +1,15 @@
+# LlamaPhone Requirements
+# AI-Powered Mobile Repair Console
+
+# GUI Framework
+PyQt6>=6.4.0
+
+# HTTP Client for Ollama
+httpx>=0.24.0
+
+# ADB/Fastboot (optional - requires system ADB installation)
+# adbutils>=2.0.0  # Optional - for programmatic ADB
+
+# Development
+setuptools>=45
+wheel>=0.37

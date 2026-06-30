@@ -1,0 +1,87 @@
+# LlamaPhone - Project Configuration
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "llamaphone"
+version = "1.0.0"
+description = "AI-Powered Mobile Repair Console with Retro CRT TV Aesthetics"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "LlamaPhone Team"}
+]
+keywords = ["mobile", "repair", "adb", "ai", "android", "fastboot", "repair-tool"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Hardware",
+]
+requires-python = ">=3.10"
+dependencies = [
+    "PyQt6>=6.4.0",
+    "httpx>=0.24.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.1.0",
+    "pyinstaller>=6.0.0",
+]
+
+[project.scripts]
+llamaphone = "llamaphone:main"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+indent-width = 4
+
+[tool.ruff.lint]
+select = [
+    "E",     # pycodestyle errors
+    "W",     # pycodestyle warnings
+    "F",     # pyflakes
+    "I",     # isort
+    "B",     # flake8-bugbear
+    "C4",    # flake8-comprehensions
+    "UP",    # pyupgrade
+    "SIM",   # flake8-simplify
+    "RUF",   # Ruff-specific rules
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+    "B008",  # do not perform function calls in argument defaults
+    "C901",  # too complex
+    "SIM102", # use continue
+    "RUF012", # mutable class defaults (safe here)
+    "RUF005", # list concatenation (style preference)
+    "RUF013", # implicit Optional (backwards compat)
+    "UP036",  # outdated version check (safety check)
+    "RUF001", # ambiguous character (emoji intentionally used)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"ui/styles.py" = ["F821"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["llamaphone"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+
+[tool.coverage.run]
+source = ["llamaphone"]
+omit = ["*/tests/*", "*/__pycache__/*"]
