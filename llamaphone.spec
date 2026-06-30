@@ -2,13 +2,11 @@
 """
 LlamaPhone - PyInstaller Build Specification
 ============================================
-This spec file packages LlamaPhone as a standalone Windows executable.
+SINGLE-FILE executable for Windows.
 
 Usage:
-    pyinstaller llamaphone.spec
-
-For a single-file executable:
     pyinstaller --onefile llamaphone.spec
+    Or just double-click build.bat
 """
 
 import sys
@@ -30,8 +28,6 @@ hiddenimports = [
     "PyQt6.QtGui",
     "PyQt6.QtWidgets",
     "PyQt6.sip",
-    "PyQt6.QtCore.Qt",
-    "PyQt6.QtGui.QFontDatabase",
     
     # Application modules
     "ui",
@@ -85,14 +81,10 @@ excludes = [
     "tkinter",
     "test",
     "unittest",
-    "matplotlib",
-    "numpy",
 ]
 
 # Data files to include
 datas = [
-    # Assets directory
-    (str(ROOT_DIR / "assets"), "assets"),
     (str(ROOT_DIR / "data"), "data"),
 ]
 
@@ -128,34 +120,23 @@ a = Analysis(
 # Create the PYZ archive
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
-# Create the executable
+# Create SINGLE-FILE executable
 exe = EXE(
     pyz,
     a.scripts,
     [],
-    exclude_binaries=True,
+    exclude_binaries=False,
     name="LlamaPhone",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=True,  # Set to True for debug console
+    upx_exclude=[],
+    console=False,  # Windowed mode - no console
     disable_windowed_traceback=True,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
     icon=icon_path,
-)
-
-# Collect all other files
-coll = COLLECT(
-    exe,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
-    strip=False,
-    upx=True,
-    upx_exclude=[],
-    name="LlamaPhone",
 )
