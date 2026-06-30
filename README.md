@@ -1,16 +1,18 @@
-# LlamaPhone
+# 📺 LlamaPhone
 
 <div align="center">
 
 ![Python](https://img.shields.io/badge/Python-3.10+-00AAFF?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-MIT-FFB000?style=for-the-badge)
 ![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-FF3333?style=for-the-badge)
+![GitHub](https://img.shields.io/github/stars/sonamcgoo-dev/llamaphone?style=for-the-badge)
+![GitHub forks](https://img.shields.io/github/forks/sonamcgoo-dev/llamaphone?style=for-the-badge)
 
-**AI-Powered Mobile Repair Console**
+### 🤖 AI-Powered Mobile Repair Console
 
 *A retro CRT TV-styled desktop application for mobile device repair technicians*
 
-[Features](#features) • [Installation](#installation) • [Usage](#usage) • [Documentation](#documentation) • [Contributing](#contributing)
+**[Features](#features)** • **[Installation](#installation)** • **[Usage](#usage)** • **[Documentation](#documentation)** • **[Contributing](#contributing)**
 
 </div>
 
@@ -73,7 +75,7 @@ LlamaPhone is a standalone desktop application that combines local AI assistance
 
 ```bash
 # Clone the repository
-git clone https://github.com/llamaphone/llamaphone.git
+git clone https://github.com/sonamcgoo-dev/llamaphone.git
 cd llamaphone
 
 # Install dependencies
@@ -206,7 +208,7 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 
 ```bash
 # Fork and clone
-git clone https://github.com/YOUR_NAME/llamaphone.git
+git clone https://github.com/sonamcgoo-dev/llamaphone.git
 cd llamaphone
 
 # Create virtual environment
@@ -265,4 +267,29 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-*Model: LP-3000 TUBE*
+## Demo
+
+```
+╔══════════════════════════════════════════════════════════╗
+║  LLAMAPHONE SYSTEMS v1.0.0                             ║
+║  ┌──────────────────────────────────────────────────┐   ║
+║  │ > Connect device via USB or WiFi                 │   ║
+║  │ > Type commands or chat with AI assistant       │   ║
+║  │ > Bypass FRP, unlock bootloaders, root devices  │   ║
+║  │ > Access exploit database and driver library     │   ║
+║  └──────────────────────────────────────────────────┘   ║
+║  [VU] ████████████░░░░ [POWER] [CH] [VOL]             ║
+╚══════════════════════════════════════════════════════════╝
+```
+
+---
+
+<div align="center">
+
+**Built with ❤️ for mobile repair technicians**
+
+📺 *Model: LP-3000 TUBE* • 🔧 *Powered by Ollama AI*
+
+[![Star on GitHub](https://img.shields.io/github/stars/sonamcgoo-dev/llamaphone?style=social)](https://github.com/sonamcgoo-dev/llamaphone)
+
+</div>

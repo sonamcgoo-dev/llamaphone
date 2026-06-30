@@ -17,7 +17,7 @@ Thank you for your interest in contributing to LlamaPhone!
 # Fork the repository on GitHub
 
 # Clone your fork
-git clone https://github.com/YOUR_USERNAME/llamaphone.git
+git clone https://github.com/sonamcgoo-dev/llamaphone.git
 cd llamaphone
 
 # Add upstream remote
