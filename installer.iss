@@ -51,16 +51,9 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked; OnlyBelowVersion: 6.1; Check: not IsAdminInstallMode
 
 [Files]
-; Main executable (from PyInstaller dist folder)
-Source: "dist\LlamaPhone\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
-; Qt6 DLLs and dependencies
-Source: "dist\LlamaPhone\*.dll"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-; Python DLLs
-Source: "dist\LlamaPhone\*.pyd"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-; Data files
-Source: "dist\LlamaPhone\data\*"; DestDir: "{app}\data"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: DirExists(ExpandConstant('{src}\dist\LlamaPhone\data'))
-; Assets
-Source: "dist\LlamaPhone\assets\*"; DestDir: "{app}\assets"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: DirExists(ExpandConstant('{src}\dist\LlamaPhone\assets'))
+; Main executable (single-file from PyInstaller)
+Source: "dist\LlamaPhone.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "data\*"; DestDir: "{app}\data"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: DirExists(ExpandConstant('{src}\data'))
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
@@ -72,12 +65,6 @@ Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}"; Fil
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 
 [Code]
-function DirExists(DirName: String): Boolean;
-begin
-  Result := DirExists(DirName);
-end;
-
 procedure InitializeWizard();
 begin
-  // Custom initialization if needed
 end;
