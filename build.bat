@@ -14,16 +14,19 @@ echo.
 
 set ONEFILE=
 set CLEAN=
+set DEBUG=
 
 REM Parse arguments
 if "%1"=="--onefile" set ONEFILE=--onefile
 if "%1"=="--clean" set CLEAN=yes
+if "%1"=="--debug" set DEBUG=yes
 
 REM Clean if requested
 if "%CLEAN%"=="yes" (
     echo Cleaning build artifacts...
     if exist build rmdir /s /q build
     if exist dist rmdir /s /q dist
+    if exist __pycache__ rmdir /s /q __pycache__
     if exist *.spec del /q *.spec
     echo Clean complete!
     echo.
@@ -45,13 +48,13 @@ echo.
 
 if defined ONEFILE (
     echo Building single-file executable...
-    pyinstaller --onefile --windowed --name LlamaPhone llamaphone.py
+    pyinstaller --onefile --name LlamaPhone llamaphone.spec --console
 ) else (
     echo Building directory executable...
     if exist llamaphone.spec (
-        pyinstaller llamaphone.spec
+        pyinstaller llamaphone.spec --console
     ) else (
-        pyinstaller --windowed --name LlamaPhone llamaphone.py
+        pyinstaller --name LlamaPhone llamaphone.py --console
     )
 )
 
@@ -66,5 +69,7 @@ if defined ONEFILE (
 ) else (
     echo   dist\LlamaPhone\LlamaPhone.exe
 )
+echo.
+echo NOTE: Run with --debug flag to see console output
 echo.
 pause

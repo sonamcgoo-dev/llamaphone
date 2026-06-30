@@ -30,29 +30,30 @@ hiddenimports = [
     "PyQt6.QtGui",
     "PyQt6.QtWidgets",
     "PyQt6.sip",
+    "PyQt6.QtCore.Qt",
+    "PyQt6.QtGui.QFontDatabase",
     
     # Application modules
-    "llamaphone",
-    "llamaphone.ui",
-    "llamaphone.ui.splash_screen",
-    "llamaphone.ui.main_window",
-    "llamaphone.ui.terminal_screen",
-    "llamaphone.ui.control_panel",
-    "llamaphone.ui.styles",
-    "llamaphone.ai",
-    "llamaphone.ai.ollama_client",
-    "llamaphone.ai.tools",
-    "llamaphone.ai.tools.adb_tools",
-    "llamaphone.ai.tools.fastboot_tools",
-    "llamaphone.ai.tools.device_tools",
-    "llamaphone.modules",
-    "llamaphone.modules.bypass",
-    "llamaphone.modules.exploits",
-    "llamaphone.modules.drivers",
-    "llamaphone.core",
-    "llamaphone.core.auth",
-    "llamaphone.core.config",
-    "llamaphone.core.logger",
+    "ui",
+    "ui.splash_screen",
+    "ui.main_window",
+    "ui.terminal_screen",
+    "ui.control_panel",
+    "ui.styles",
+    "ai",
+    "ai.ollama_client",
+    "ai.tools",
+    "ai.tools.adb_tools",
+    "ai.tools.fastboot_tools",
+    "ai.tools.device_tools",
+    "modules",
+    "modules.bypass",
+    "modules.exploits",
+    "modules.drivers",
+    "core",
+    "core.auth",
+    "core.config",
+    "core.logger",
     
     # HTTP client
     "httpx",
@@ -61,16 +62,17 @@ hiddenimports = [
     "certifi",
     "h11",
     "idna",
+    "sniffio",
     
     # JSON handling
     "json",
     "pickle",
-    "sqlite3",
     
     # Socket for network tools
     "socket",
     "concurrent.futures",
     "threading",
+    "contextlib",
 ]
 
 # Exclude patterns
@@ -83,12 +85,15 @@ excludes = [
     "tkinter",
     "test",
     "unittest",
+    "matplotlib",
+    "numpy",
 ]
 
 # Data files to include
 datas = [
     # Assets directory
     (str(ROOT_DIR / "assets"), "assets"),
+    (str(ROOT_DIR / "data"), "data"),
 ]
 
 # Icons (if present)
@@ -134,8 +139,8 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=False,  # Set to True for debug console
-    disable_windowed_traceback=False,
+    console=True,  # Set to True for debug console
+    disable_windowed_traceback=True,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
@@ -154,7 +159,3 @@ coll = COLLECT(
     upx_exclude=[],
     name="LlamaPhone",
 )
-
-# Alternative: Single file executable (uncomment for single file)
-# mode = 'single-file' # Uncomment for single-file mode
-# mode = 'onedir'  # Default: directory with exe and dependencies
