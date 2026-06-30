@@ -2,6 +2,11 @@
 ; ==========================================
 ; Download Inno Setup from: https://jrsoftware.org/isinfo.php
 ; Compile this script with Inno Setup Compiler
+;
+; To add an icon:
+; 1. Create an icon file (icon.ico)
+; 2. Place it in the assets folder
+; 3. Uncomment the SetupIconFile line below
 
 #define MyAppName "LlamaPhone"
 #define MyAppVersion "1.0.0"
@@ -30,7 +35,7 @@ Compression=lzma2
 SolidCompression=yes
 ; Visual
 WizardStyle=modern
-SetupIconFile=assets\icon.ico
+; SetupIconFile=assets\icon.ico  ; Uncomment after adding icon file
 ; Privileges
 PrivilegesRequired=admin
 PrivilegesRequiredOverridesAllowed=dialog
