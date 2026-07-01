@@ -5,6 +5,15 @@ All notable changes to LlamaPhone will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- Replaced placeholder UI actions with live ADB/Fastboot execution paths and real Ollama chat requests
+- Expanded onboarding (`setup.py` / `install.bat`) to install dependencies, provision ADB on Windows, install Ollama on Windows, and pull `qwen2.5-coder:7b`
+- Updated splash/loading visuals and application branding assets (window icon, taskbar/desktop icon, splash logo)
+- Hardened Windows packaging so UI assets/modules are consistently included in PyInstaller builds
+
 ## [1.0.0] - 2024-06-30
 
 ### Added

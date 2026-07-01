@@ -20,6 +20,9 @@
 ollama pull qwen2.5-coder:7b
 ```
 
+> Note: `install.bat` / `python setup.py` already pulls `qwen2.5-coder:7b` during onboarding.  
+> Use the command above only if you want to pull it manually again.
+
 ### Quantized Versions
 
 For systems with limited RAM/VRAM:

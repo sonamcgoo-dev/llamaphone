@@ -67,23 +67,27 @@ LlamaPhone is a standalone desktop application that combines local AI assistance
 | Requirement | Version | Notes |
 |-------------|---------|-------|
 | Python | 3.10+ | [python.org](https://python.org) |
-| Ollama | Latest | [ollama.ai](https://ollama.ai) |
-| ADB | Latest | Part of Android SDK |
+| Ollama | Latest | Auto-installed on Windows during onboarding (winget) |
+| ADB | Latest | Auto-installed on Windows during onboarding (Platform Tools) |
 
-### Quick Install
+### Quick Install (Windows)
 
 ```bash
 # Clone the repository
 git clone https://github.com/sonamcgoo-dev/llamaphone.git
 cd llamaphone
 
-# Install dependencies
-pip install -r requirements.txt
-
-# Download AI model (recommended)
-ollama pull qwen2.5-coder:7b
+# Full onboarding (installs Python deps, ADB, Ollama, and pulls default model)
+install.bat
 
 # Run the application
+python llamaphone.py
+```
+
+### Quick Install (Cross-platform)
+
+```bash
+python setup.py
 python llamaphone.py
 ```
 
@@ -112,8 +116,8 @@ Simply download `LlamaPhone_Setup_1.0.0.exe` and run it!
 git clone https://github.com/sonamcgoo-dev/llamaphone.git
 cd llamaphone
 
-# Install dependencies
-pip install -r requirements.txt
+# Full onboarding first
+python setup.py
 
 # Run
 python llamaphone.py
