@@ -6,7 +6,7 @@ TV knobs and buttons for module selection
 import math
 
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QBrush, QColor, QConicalGradient, QPainter, QPen
+from PyQt6.QtGui import QBrush, QColor, QPainter, QPen
 from PyQt6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -274,20 +274,15 @@ class RotaryKnob(QWidget):
         center = self.rect().center()
         radius = size // 2 - 5
 
-        # Background circle
+        # Outer ring
         painter.setBrush(QBrush(QColor(40, 40, 40)))
         painter.setPen(QPen(QColor(60, 60, 60), 2))
         painter.drawEllipse(center, radius, radius)
 
-        # Inner circle (metallic look)
-        gradient = QConicalGradient(center, -90)
-        gradient.setColorAt(0, QColor(80, 80, 80))
-        gradient.setColorAt(0.5, QColor(60, 60, 60))
-        gradient.setColorAt(1, QColor(80, 80, 80))
-
-        painter.setBrush(QBrush(gradient))
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.drawEllipse(center, radius - 10, radius - 10)
+        # Inner face (stable solid fill)
+        painter.setBrush(QBrush(QColor(70, 70, 70)))
+        painter.setPen(QPen(QColor(30, 30, 30), 1))
+        painter.drawEllipse(center, max(radius - 10, 1), max(radius - 10, 1))
 
         # Tick marks
         painter.setPen(QPen(QColor(100, 100, 100), 2))

@@ -828,21 +828,21 @@ class MainWindow(QMainWindow):
         self.ai_status.setStyleSheet("color: #33FF33; padding: 0 10px;")
         statusbar.addWidget(self.ai_status)
 
-        statusbar.addSeparator()
+        statusbar.addWidget(QLabel(" | "))
 
         # ADB Status
         self.adb_status = QLabel("💻 ADB: DISCONNECTED")
         self.adb_status.setStyleSheet("color: #FFB000; padding: 0 10px;")
         statusbar.addWidget(self.adb_status)
 
-        statusbar.addSeparator()
+        statusbar.addWidget(QLabel(" | "))
 
         # Device Status
         self.device_status = QLabel("📱 Device: NONE")
         self.device_status.setStyleSheet("color: #FFB000; padding: 0 10px;")
         statusbar.addWidget(self.device_status)
 
-        statusbar.addPermanentSeparator()
+        statusbar.addPermanentWidget(QLabel(" | "))
 
         # Model info
         model_label = QLabel("Model: qwen2.5-coder-7b")

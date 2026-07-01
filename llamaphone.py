@@ -55,8 +55,6 @@ def main():
     def on_splash_complete():
         splash.close()
         main_window.show()
-        main_window.activateWindow()
-        main_window.raise_()
 
     splash.finished.connect(on_splash_complete)
 

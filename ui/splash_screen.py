@@ -74,7 +74,6 @@ class SplashScreen(QWidget):
             Qt.WindowType.FramelessWindowHint |
             Qt.WindowType.SplashScreen
         )
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
         # Center on screen
         self.move_to_center()
@@ -298,7 +297,6 @@ class SplashScreen(QWidget):
             self.dial_angle = 0
         self.vu_widget.update_angle(self.dial_angle)
         self.vu_widget.update_level(self.boot_index / len(self.BOOT_MESSAGES))
-        self.vu_widget.repaint()
 
     def set_background_frame(self, index: int):
         """Set one of the horizontal splash images as CRT background."""
@@ -351,14 +349,7 @@ class SplashScreen(QWidget):
 
     def paintEvent(self, event):
         """Custom paint event for CRT effects."""
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-
-        # Draw scanlines on the screen
-        self.draw_scanlines(painter)
-
-        # Draw vignette effect
-        self.draw_vignette(painter)
+        super().paintEvent(event)
 
     def draw_scanlines(self, painter):
         """Draw CRT scanline effect."""
@@ -389,13 +380,41 @@ class SplashScreen(QWidget):
 
 
 class VUMeterWidget(QWidget):
-    """VU Meter decoration widget."""
+    """Stable VU meter decoration widget."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.angle = 0
         self.level = 0
         self.setFixedSize(100, 60)
+        self.setStyleSheet("background-color: #1E1E1E; border: 1px solid #555; border-radius: 4px;")
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(6, 6, 6, 6)
+        layout.setSpacing(4)
+
+        self.title = QLabel("VU")
+        self.title.setStyleSheet("color: #AAAAAA; font-size: 8px;")
+        self.title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self.title)
+
+        self.bar = QProgressBar()
+        self.bar.setRange(0, 100)
+        self.bar.setTextVisible(False)
+        self.bar.setFixedHeight(12)
+        self.bar.setStyleSheet(
+            """
+            QProgressBar {
+                background-color: #111111;
+                border: 1px solid #333333;
+                border-radius: 3px;
+            }
+            QProgressBar::chunk {
+                background-color: #33FF33;
+            }
+            """
+        )
+        layout.addWidget(self.bar)
 
     def update_angle(self, angle):
         """Update the needle angle."""
@@ -404,43 +423,4 @@ class VUMeterWidget(QWidget):
     def update_level(self, level):
         """Update the signal level."""
         self.level = level
-
-    def paintEvent(self, event):
-        """Paint the VU meter."""
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-
-        # Background
-        painter.setBrush(QBrush(QColor(30, 30, 30)))
-        painter.setPen(QPen(QColor(50, 50, 50), 2))
-        painter.drawRoundedRect(0, 0, 100, 60, 5)
-
-        # Scale marks
-        painter.setPen(QPen(QColor(100, 100, 100), 1))
-        for i in range(-20, 21, 5):
-            x = 50 + (i + 20) * 2
-            y_start = 10 if i % 10 == 0 else 15
-            painter.drawLine(x, 50, x, y_start)
-
-        # Meter labels
-        painter.setPen(QColor(150, 150, 150))
-        painter.setFont(QFont("Arial", 7))
-        painter.drawText(8, 50, "-20")
-        painter.drawText(82, 50, "+10")
-
-        # Needle
-        needle_angle = -45 + (self.level * 90)  # -45 to 45 degrees
-        radians = math.radians(needle_angle)
-
-        center_x, center_y = 50, 50
-        needle_length = 35
-
-        end_x = center_x + needle_length * math.cos(radians)
-        end_y = center_y - needle_length * math.sin(radians)
-
-        painter.setPen(QPen(QColor(255, 50, 50), 2))
-        painter.drawLine(center_x, center_y, end_x, end_y)
-
-        # Center pivot
-        painter.setBrush(QBrush(QColor(80, 80, 80)))
-        painter.drawEllipse(center_x - 5, center_y - 5, 10, 10)
+        self.bar.setValue(max(0, min(100, int(level * 100))))

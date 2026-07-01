@@ -68,13 +68,13 @@ def get_crt_stylesheet():
     """Get the complete CRT TV stylesheet."""
     return f"""
 /* ==================== MAIN WINDOW ==================== */
-QMainWindow {
+QMainWindow {{
     background-color: {COLORS['cabinet_dark']};
     border: none;
-}
+}}
 
 /* ==================== TV CABINET FRAME ==================== */
-#tvFrame {
+#tvFrame {{
     background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
         stop:0 {COLORS['cabinet_light']},
         stop:0.3 {COLORS['cabinet_medium']},
@@ -82,7 +82,7 @@ QMainWindow {
     border-radius: 20px;
     border: 3px solid {COLORS['cabinet_edge']};
     padding: 10px;
-}
+}}
 
 /* ==================== SCREEN CONTAINER ==================== */
 #screenContainer {{
