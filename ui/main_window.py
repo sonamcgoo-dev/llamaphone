@@ -44,9 +44,12 @@ class MainWindow(QMainWindow):
         self.current_device = None
         self.ai_ready = False
         self.adb_connected = False
+        self._bootloader_actions: dict[str, QPushButton] = {}
+        self._root_method_buttons: dict[str, QPushButton] = {}
 
         self.init_ui()
         self.setup_menus()
+        self.report_runtime_status()
         self.start_status_updates()
 
     def init_ui(self):
@@ -481,6 +484,8 @@ class MainWindow(QMainWindow):
             btn = QPushButton(title)
             btn.setToolTip(tooltip)
             btn.setMinimumHeight(40)
+            btn.clicked.connect(lambda checked=False, t=title: self.handle_bootloader_action(t))
+            self._bootloader_actions[title] = btn
             layout.addWidget(btn)
 
         layout.addStretch()
@@ -518,6 +523,7 @@ class MainWindow(QMainWindow):
             btn = QPushButton(f"📱 {mode}")
             btn.setToolTip(desc)
             btn.setMinimumHeight(40)
+            btn.clicked.connect(lambda checked=False, m=mode: self.on_download_mode_selected(m))
             modes_layout.addWidget(btn)
 
         modes_group.setLayout(modes_layout)
@@ -528,12 +534,17 @@ class MainWindow(QMainWindow):
         fw_layout = QVBoxLayout()
 
         fw_layout.addWidget(QLabel("Firmware File:"))
-        fw_input = QLineEdit()
-        fw_input.setPlaceholderText("Select firmware package...")
-        fw_layout.addWidget(fw_input)
+        self.fw_input = QLineEdit()
+        self.fw_input.setPlaceholderText("Select firmware package...")
+        fw_layout.addWidget(self.fw_input)
+
+        fw_browse_btn = QPushButton("📁 Browse")
+        fw_browse_btn.clicked.connect(self.browse_firmware_file)
+        fw_layout.addWidget(fw_browse_btn)
 
         fw_btn = QPushButton("📥 Flash Firmware")
         fw_btn.setMinimumHeight(45)
+        fw_btn.clicked.connect(self.flash_firmware_package)
         fw_layout.addWidget(fw_btn)
 
         fw_group.setLayout(fw_layout)
@@ -573,6 +584,8 @@ class MainWindow(QMainWindow):
             btn = QPushButton(f"✓ {method}")
             btn.setToolTip(desc)
             btn.setMinimumHeight(40)
+            btn.clicked.connect(lambda checked=False, m=method: self.on_root_method_selected(m))
+            self._root_method_buttons[method] = btn
             root_layout.addWidget(btn)
 
         root_group.setLayout(root_layout)
@@ -622,6 +635,8 @@ class MainWindow(QMainWindow):
         self.exploit_search = QLineEdit()
         self.exploit_search.setPlaceholderText("Search exploits by device or CVE...")
         search_btn = QPushButton("Search")
+        search_btn.clicked.connect(self.search_exploits)
+        self.exploit_search.returnPressed.connect(self.search_exploits)
         search_layout.addWidget(self.exploit_search)
         search_layout.addWidget(search_btn)
         layout.addLayout(search_layout)
@@ -642,6 +657,7 @@ class MainWindow(QMainWindow):
         for cat in categories:
             btn = QPushButton(cat)
             btn.setMinimumHeight(35)
+            btn.clicked.connect(lambda checked=False, c=cat: self.select_exploit_category(c))
             categories_layout.addWidget(btn)
 
         categories_group.setLayout(categories_layout)
@@ -709,6 +725,7 @@ class MainWindow(QMainWindow):
         self.adb_path_input = QLineEdit()
         self.adb_path_input.setText("/usr/bin/adb")
         browse_adb = QPushButton("Browse")
+        browse_adb.clicked.connect(self.browse_adb_path)
         adb_path_layout.addWidget(self.adb_path_input)
         adb_path_layout.addWidget(browse_adb)
         adb_layout.addLayout(adb_path_layout)
@@ -727,6 +744,7 @@ class MainWindow(QMainWindow):
 
         driver_layout.addWidget(QLabel("Driver Cache: 2,450 entries loaded"))
         update_btn = QPushButton("🔄 Update Driver Database")
+        update_btn.clicked.connect(self.update_driver_database)
         driver_layout.addWidget(update_btn)
 
         driver_group.setLayout(driver_layout)
@@ -776,20 +794,25 @@ class MainWindow(QMainWindow):
 
         connect_action = QAction("Connect Device", self)
         connect_action.setShortcut("Ctrl+D")
+        connect_action.triggered.connect(self.connect_device)
         device_menu.addAction(connect_action)
 
         disconnect_action = QAction("Disconnect", self)
+        disconnect_action.triggered.connect(lambda: self.execute_adb_command("disconnect"))
         device_menu.addAction(disconnect_action)
 
         device_menu.addSeparator()
 
         reboot_action = QAction("Reboot Device", self)
+        reboot_action.triggered.connect(lambda: self.execute_adb_command("reboot"))
         device_menu.addAction(reboot_action)
 
         recovery_action = QAction("Reboot to Recovery", self)
+        recovery_action.triggered.connect(lambda: self.execute_adb_command("reboot recovery"))
         device_menu.addAction(recovery_action)
 
         fastboot_action = QAction("Reboot to Fastboot", self)
+        fastboot_action.triggered.connect(lambda: self.execute_adb_command("reboot bootloader"))
         device_menu.addAction(fastboot_action)
 
         # AI menu
@@ -797,6 +820,7 @@ class MainWindow(QMainWindow):
 
         chat_action = QAction("Open AI Chat", self)
         chat_action.setShortcut("Ctrl+Shift+A")
+        chat_action.triggered.connect(lambda: self.screen_tabs.setCurrentIndex(0))
         ai_menu.addAction(chat_action)
 
         generate_action = QAction("Generate Script", self)
@@ -806,6 +830,7 @@ class MainWindow(QMainWindow):
         ai_menu.addSeparator()
 
         model_action = QAction("Change Model...", self)
+        model_action.triggered.connect(lambda: self.screen_tabs.setCurrentIndex(9))
         ai_menu.addAction(model_action)
 
         # Help menu
@@ -893,6 +918,31 @@ class MainWindow(QMainWindow):
             f"Starting {button_name} procedure. Please ensure device is connected and follow the on-screen instructions."
         )
         self.screen_tabs.setCurrentIndex(0)  # Switch to terminal
+
+    def report_runtime_status(self):
+        """Show dependency/model availability in the terminal at startup."""
+        checks = [
+            ("ADB", ["adb", "version"]),
+            ("Fastboot", ["fastboot", "--version"]),
+            ("Ollama", ["ollama", "--version"]),
+        ]
+        for name, cmd in checks:
+            try:
+                return_code, output, error = self._run_cli(cmd, timeout=8)
+                message = output.splitlines()[0] if output else (error or "available")
+                status = "ready" if return_code == 0 else "missing"
+                self.terminal_screen.append_message("Startup", f"{name}: {status} ({message})", is_ai=True)
+            except Exception as exc:
+                self.terminal_screen.append_message("Startup", f"{name}: missing ({exc})", is_ai=True)
+
+        try:
+            return_code, output, _error = self._run_cli(["ollama", "list"], timeout=10)
+            if return_code == 0 and "qwen2.5-coder:7b" in output:
+                self.terminal_screen.append_message("Startup", "Model qwen2.5-coder:7b: ready", is_ai=True)
+            else:
+                self.terminal_screen.append_message("Startup", "Model qwen2.5-coder:7b: not found", is_ai=True)
+        except Exception:
+            self.terminal_screen.append_message("Startup", "Model check skipped (Ollama unavailable)", is_ai=True)
 
     def _run_cli(self, command: list[str], timeout: int = 30) -> tuple[int, str, str]:
         """Run a CLI command and return (returncode, stdout, stderr)."""
@@ -1025,10 +1075,25 @@ class MainWindow(QMainWindow):
         """Browse for flash file."""
         from PyQt6.QtWidgets import QFileDialog
         file_path, _ = QFileDialog.getOpenFileName(
-            self, "Select Image File", "", "Image Files (*.img *.bin);;All Files (*)"
+            self,
+            "Select File",
+            "",
+            "Firmware/Images (*.img *.bin *.zip *.tar *.md5 *.png *.jpg *.jpeg *.webp *.bmp);;All Files (*)",
         )
         if file_path:
             self.flash_file_input.setText(file_path)
+
+    def browse_firmware_file(self):
+        """Browse for firmware package (download mode panel)."""
+        from PyQt6.QtWidgets import QFileDialog
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Select Firmware Package",
+            "",
+            "Firmware Packages (*.zip *.tar *.md5 *.img *.bin *.png *.jpg *.jpeg);;All Files (*)",
+        )
+        if file_path:
+            self.fw_input.setText(file_path)
 
     def flash_partition(self):
         """Flash a partition image."""
@@ -1051,6 +1116,90 @@ class MainWindow(QMainWindow):
                 self.terminal_screen.append_message("System", f"Flash failed: {return_code}", is_ai=True)
         except (subprocess.SubprocessError, FileNotFoundError) as ex:
             self.terminal_screen.append_message("System", f"Flash failed: {ex}", is_ai=True)
+
+    def flash_firmware_package(self):
+        """Handle firmware flashing entry point from download panel."""
+        firmware = self.fw_input.text().strip()
+        if not firmware:
+            self.terminal_screen.append_message("System", "Select firmware file first.", is_ai=True)
+            return
+        self.terminal_screen.append_message(
+            "System",
+            f"Firmware queued: {firmware}. Use vendor-specific tool flow shown in this tab.",
+            is_ai=True,
+        )
+
+    def on_download_mode_selected(self, mode_name: str):
+        """Handle download mode selection buttons."""
+        self.terminal_screen.append_message(
+            "System",
+            f"Selected download mode: {mode_name}. Connect device and proceed with vendor tool chain.",
+            is_ai=True,
+        )
+
+    def on_root_method_selected(self, method_name: str):
+        """Handle root method selection."""
+        self.terminal_screen.append_message(
+            "System",
+            f"Selected root method: {method_name}. Ask AI terminal for step-by-step for your exact device.",
+            is_ai=True,
+        )
+
+    def handle_bootloader_action(self, action_name: str):
+        """Execute or route bootloader actions."""
+        action_map = {
+            "Check Status": "getvar unlocked",
+            "Unlock Bootloader": "flashing unlock",
+            "Lock Bootloader": "flashing lock",
+            "Check OEM Info": "getvar all",
+        }
+        cmd = action_map.get(action_name)
+        if cmd:
+            self.execute_fastboot(cmd)
+            return
+        self.terminal_screen.append_message(
+            "System",
+            f"{action_name} selected. Provide required files/device and run the guided steps in terminal.",
+            is_ai=True,
+        )
+
+    def search_exploits(self):
+        """Basic exploit search feedback."""
+        term = self.exploit_search.text().strip()
+        if not term:
+            self.exploit_details.setPlainText("Enter a search term (device, CVE, exploit family).")
+            return
+        self.exploit_details.setPlainText(
+            f"No local indexed exploit entries for '{term}'. Use AI terminal for targeted research guidance."
+        )
+        self.terminal_screen.append_message("System", f"Exploit search requested: {term}", is_ai=True)
+
+    def select_exploit_category(self, category: str):
+        """Populate exploit details panel for selected category."""
+        self.exploit_details.setPlainText(
+            f"{category}\n\nThis category view is active. Use search above for device/CVE-specific workflows."
+        )
+
+    def browse_adb_path(self):
+        """Select custom ADB executable path."""
+        from PyQt6.QtWidgets import QFileDialog
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Select ADB Executable",
+            "",
+            "Executables (adb.exe adb);;All Files (*)",
+        )
+        if file_path:
+            self.adb_path_input.setText(file_path)
+            self.terminal_screen.append_message("System", f"ADB path set: {file_path}", is_ai=True)
+
+    def update_driver_database(self):
+        """Driver DB update action."""
+        self.terminal_screen.append_message(
+            "System",
+            "Driver database update triggered. Network-backed sync is not yet configured in this build.",
+            is_ai=True,
+        )
 
     def show_about(self):
         """Show about dialog."""
