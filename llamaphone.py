@@ -25,6 +25,7 @@ def resource_path(*parts: str) -> str:
 
 def main():
     """Main entry point for LlamaPhone."""
+    os.environ.setdefault("QT_OPENGL", "software")
 
     # Create application
     app = QApplication(sys.argv)
@@ -43,20 +44,22 @@ def main():
             if font_file.endswith(('.ttf', '.otf')):
                 QFontDatabase.addApplicationFont(os.path.join(font_dir, font_file))
 
-    # Show splash screen first
-    splash = SplashScreen()
-    splash.show()
-    app.processEvents()
-
-    # Create main window (hidden initially)
+    # Create main window
     main_window = MainWindow()
 
-    # Connect splash completion to main window
-    def on_splash_complete():
-        splash.close()
+    # Splash is disabled for packaged builds for maximum runtime stability.
+    if getattr(sys, "frozen", False):
         main_window.show()
+    else:
+        splash = SplashScreen()
+        splash.show()
+        app.processEvents()
 
-    splash.finished.connect(on_splash_complete)
+        def on_splash_complete():
+            splash.close()
+            main_window.show()
+
+        splash.finished.connect(on_splash_complete)
 
     # Start event loop
     sys.exit(app.exec())
