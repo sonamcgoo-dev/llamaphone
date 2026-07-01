@@ -10,26 +10,15 @@ import sys
 
 
 def print_header():
-    print("""
-    ╔═══════════════════════════════════════════════════════════════╗
-    ║                                                               ║
-    ║   ██╗  ██╗███████╗███╗   ███╗██╗███╗   ██╗ ██████╗           ║
-    ║   ██║ ██╔╝██╔════╝████╗ ████║██║████╗  ██║██╔════╝           ║
-    ║   █████╔╝ █████╗  ██╔████╔██║██║██╔██╗ ██║██║  ███╗          ║
-    ║   ██╔═██╗ ██╔══╝  ██║╚██╔╝██║██║██║╚██╗██║██║   ██║          ║
-    ║   ██║  ██╗███████╗██║ ╚═╝ ██║██║██║ ╚████║╚██████╔╝          ║
-    ║   ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝╚═╝╚═╝  ╚═══╝ ╚═════╝           ║
-    ║                                                               ║
-    ║   ═══════════ AI MOBILE REPAIR CONSOLE ═══════════          ║
-    ║                                                               ║
-    ╚═══════════════════════════════════════════════════════════════╝
-    """)
+    print("=" * 63)
+    print("LlamaPhone - AI MOBILE REPAIR CONSOLE")
+    print("=" * 63)
 
 
 def check_python():
     """Check Python version."""
     if sys.version_info < (3, 10):
-        print("❌ Python 3.10+ required!")
+        print("ERROR: Python 3.10+ required!")
         print(f"   Current version: {sys.version}")
         return False
     print(f"✓ Python {sys.version_info.major}.{sys.version_info.minor} detected")
@@ -51,7 +40,7 @@ def check_ollama():
     except (subprocess.TimeoutExpired, FileNotFoundError):
         pass
 
-    print("⚠ Ollama not detected")
+    print("WARNING: Ollama not detected")
     print("   Install from: https://ollama.ai/")
     return False
 
@@ -72,14 +61,14 @@ def check_adb():
     except (subprocess.TimeoutExpired, FileNotFoundError):
         pass
 
-    print("⚠ ADB not detected")
+    print("WARNING: ADB not detected")
     print("   Install Android SDK Platform Tools")
     return False
 
 
 def install_dependencies():
     """Install Python dependencies."""
-    print("\n📦 Installing Python dependencies...")
+    print("\nInstalling Python dependencies...")
 
     try:
         subprocess.run(
@@ -89,13 +78,13 @@ def install_dependencies():
         print("✓ Dependencies installed")
         return True
     except subprocess.CalledProcessError:
-        print("❌ Failed to install dependencies")
+        print("ERROR: Failed to install dependencies")
         return False
 
 
 def download_model():
     """Download the AI model."""
-    print("\n🤖 Downloading AI Model...")
+    print("\nDownloading AI Model...")
     print("   Recommended: Qwen2.5-Coder-7B")
     print()
 
@@ -115,7 +104,7 @@ def download_model():
 
     model_name = models.get(choice, models["1"])[0]
 
-    print(f"\n📥 Pulling {model_name}...")
+    print(f"\nPulling {model_name}...")
     print("   This may take several minutes depending on your internet speed...")
 
     try:
@@ -123,7 +112,7 @@ def download_model():
         print(f"✓ {model_name} downloaded successfully!")
         return True
     except subprocess.CalledProcessError:
-        print(f"❌ Failed to download {model_name}")
+        print(f"ERROR: Failed to download {model_name}")
         return False
 
 
