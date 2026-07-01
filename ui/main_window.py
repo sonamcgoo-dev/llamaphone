@@ -6,6 +6,7 @@ Retro CRT TV-styled main application window
 from PyQt6.QtCore import QTimer, pyqtSignal
 from PyQt6.QtGui import QAction, QColor, QPainter, QPen
 from PyQt6.QtWidgets import (
+    QApplication,
     QComboBox,
     QFrame,
     QGroupBox,
@@ -47,6 +48,7 @@ class MainWindow(QMainWindow):
     def init_ui(self):
         """Initialize the main UI."""
         self.setWindowTitle("LlamaPhone - AI Mobile Repair Console")
+        self.setWindowIcon(QApplication.windowIcon())
         self.setMinimumSize(1200, 800)
         self.resize(1400, 900)
 

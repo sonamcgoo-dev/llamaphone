@@ -10,11 +10,17 @@ import sys
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from PyQt6.QtGui import QFontDatabase
+from PyQt6.QtGui import QFontDatabase, QIcon
 from PyQt6.QtWidgets import QApplication
 
 from ui.main_window import MainWindow
 from ui.splash_screen import SplashScreen
+
+
+def resource_path(*parts: str) -> str:
+    """Resolve resource paths for source runs and PyInstaller bundles."""
+    base_path = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base_path, *parts)
 
 
 def main():
@@ -25,12 +31,13 @@ def main():
     app.setApplicationName("LlamaPhone")
     app.setApplicationVersion("1.0.0")
     app.setOrganizationName("LlamaPhone")
+    app.setWindowIcon(QIcon(resource_path("assets", "icon.png")))
 
     # Set application-wide style
     app.setStyle("Fusion")
 
     # Load custom fonts
-    font_dir = os.path.join(os.path.dirname(__file__), "assets", "fonts")
+    font_dir = resource_path("assets", "fonts")
     if os.path.exists(font_dir):
         for font_file in os.listdir(font_dir):
             if font_file.endswith(('.ttf', '.otf')):

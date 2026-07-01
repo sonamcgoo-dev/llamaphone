@@ -33,6 +33,7 @@ class SplashScreen(QWidget):
     ]
 
     IMAGE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets", "branding")
+    WORDMARK_PATH = os.path.join(IMAGE_DIR, "llamaphone-wordmark.png")
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -98,7 +99,7 @@ class SplashScreen(QWidget):
         screen_layout = QVBoxLayout(self.screen)
         screen_layout.setContentsMargins(20, 20, 20, 20)
 
-        # Title
+        # Title / wordmark
         self.title_label = QLabel("LLAMAPHONE")
         self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title_font = QFont("Courier New", 32, QFont.Weight.Bold)
@@ -108,6 +109,7 @@ class SplashScreen(QWidget):
             text-shadow: 0 0 10px #33FF33, 0 0 20px #33FF33;
             padding: 20px;
         """)
+        self._set_title_wordmark()
         screen_layout.addWidget(self.title_label)
 
         # Subtitle
@@ -242,6 +244,18 @@ class SplashScreen(QWidget):
         self.loader_timer = QTimer(self)
         self.loader_timer.timeout.connect(self.update_loader_animation)
         self.loader_timer.start(150)
+
+    def _set_title_wordmark(self):
+        """Use the extracted LlamaPhone logo image as the splash title."""
+        if not os.path.exists(self.WORDMARK_PATH):
+            return
+        pixmap = QPixmap(self.WORDMARK_PATH)
+        if pixmap.isNull():
+            return
+        self.title_label.setText("")
+        self.title_label.setPixmap(
+            pixmap.scaledToWidth(420, Qt.TransformationMode.SmoothTransformation)
+        )
 
     def update_boot(self):
         """Update boot messages."""
