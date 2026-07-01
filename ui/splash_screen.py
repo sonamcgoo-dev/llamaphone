@@ -4,9 +4,10 @@ Retro CRT TV boot animation with credits
 """
 
 import math
+import os
 
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QBrush, QColor, QFont, QLinearGradient, QPainter, QPen
+from PyQt6.QtGui import QBrush, QColor, QFont, QLinearGradient, QPainter, QPen, QPixmap
 from PyQt6.QtWidgets import QFrame, QLabel, QProgressBar, QVBoxLayout, QWidget
 
 
@@ -31,15 +32,38 @@ class SplashScreen(QWidget):
         ">>> READY <<<",
     ]
 
+    IMAGE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets", "branding")
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.boot_index = 0
         self.progress_value = 0
         self.cursor_visible = True
         self.dial_angle = 0
+        self.loader_tick = 0
+        self.horizontal_images: list[QPixmap] = []
+        self.vertical_images: list[QPixmap] = []
+        self._load_branding_images()
 
         self.init_ui()
         self.start_animation()
+
+    def _load_branding_images(self):
+        """Load splash and loader art from assets/branding."""
+        if not os.path.isdir(self.IMAGE_DIR):
+            return
+
+        image_files = [f for f in os.listdir(self.IMAGE_DIR) if f.lower().endswith(".png")]
+        for filename in sorted(image_files):
+            path = os.path.join(self.IMAGE_DIR, filename)
+            pixmap = QPixmap(path)
+            if pixmap.isNull():
+                continue
+
+            if pixmap.width() >= pixmap.height():
+                self.horizontal_images.append(pixmap)
+            else:
+                self.vertical_images.append(pixmap)
 
     def init_ui(self):
         """Initialize the splash screen UI."""
@@ -63,6 +87,12 @@ class SplashScreen(QWidget):
         self.screen = QFrame(self.frame)
         self.screen.setObjectName("splashScreen")
         self.screen.setGeometry(50, 50, 700, 400)
+
+        self.background_label = QLabel(self.screen)
+        self.background_label.setGeometry(0, 0, 700, 400)
+        self.background_label.setScaledContents(True)
+        self.background_label.lower()
+        self.set_background_frame(0)
 
         # Layout for screen content
         screen_layout = QVBoxLayout(self.screen)
@@ -120,6 +150,22 @@ class SplashScreen(QWidget):
             }
         """)
         screen_layout.addWidget(self.progress_bar)
+
+        # Animated llama loader
+        self.loading_llama = QLabel()
+        self.loading_llama.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.loading_llama.setFixedSize(130, 220)
+        self.loading_llama.setStyleSheet("background: transparent;")
+        screen_layout.addWidget(self.loading_llama, alignment=Qt.AlignmentFlag.AlignCenter)
+
+        # Transition card (uses vertical art)
+        self.transition_label = QLabel(self.screen)
+        self.transition_label.setGeometry(250, 40, 200, 320)
+        self.transition_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.transition_label.setStyleSheet(
+            "background-color: rgba(13, 13, 13, 180); border: 2px solid #33FF33; border-radius: 8px;"
+        )
+        self.transition_label.hide()
 
         # Credits section
         credits_y = 480
@@ -193,6 +239,10 @@ class SplashScreen(QWidget):
         self.vu_timer.timeout.connect(self.update_vu_meter)
         self.vu_timer.start(50)
 
+        self.loader_timer = QTimer(self)
+        self.loader_timer.timeout.connect(self.update_loader_animation)
+        self.loader_timer.start(150)
+
     def update_boot(self):
         """Update boot messages."""
         if self.boot_index < len(self.BOOT_MESSAGES):
@@ -211,11 +261,15 @@ class SplashScreen(QWidget):
             # Update progress
             self.progress_value = int(((self.boot_index + 1) / len(self.BOOT_MESSAGES)) * 100)
             self.progress_bar.setValue(self.progress_value)
+            if self.horizontal_images:
+                self.set_background_frame(self.boot_index // 3)
 
             self.boot_index += 1
         else:
             self.boot_timer.stop()
             self.cursor_timer.stop()
+            self.loader_timer.stop()
+            self.show_transition_frame()
             # Complete animation
             QTimer.singleShot(500, self.finished.emit)
 
@@ -231,6 +285,55 @@ class SplashScreen(QWidget):
         self.vu_widget.update_angle(self.dial_angle)
         self.vu_widget.update_level(self.boot_index / len(self.BOOT_MESSAGES))
         self.vu_widget.repaint()
+
+    def set_background_frame(self, index: int):
+        """Set one of the horizontal splash images as CRT background."""
+        if not self.horizontal_images:
+            return
+        frame = self.horizontal_images[index % len(self.horizontal_images)]
+        self.background_label.setPixmap(
+            frame.scaled(
+                self.background_label.size(),
+                Qt.AspectRatioMode.KeepAspectRatioByExpanding,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+        )
+
+    def update_loader_animation(self):
+        """Animate the vertical 'screaming llama' loading art."""
+        if not self.vertical_images:
+            return
+
+        # Prefer the second vertical image (screaming llama) when available.
+        scream_index = 1 if len(self.vertical_images) > 1 else 0
+        frame = self.vertical_images[scream_index]
+
+        # Small pulse keeps it animated even with a single image.
+        pulse = 1.0 + (0.04 * math.sin(self.loader_tick * 0.6))
+        width = int(120 * pulse)
+        height = int(210 * pulse)
+        pix = frame.scaled(
+            width,
+            height,
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
+        )
+        self.loading_llama.setPixmap(pix)
+        self.loader_tick += 1
+
+    def show_transition_frame(self):
+        """Show the transition card right before the main window appears."""
+        if not self.vertical_images:
+            return
+        frame = self.vertical_images[0]
+        self.transition_label.setPixmap(
+            frame.scaled(
+                self.transition_label.size(),
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+        )
+        self.transition_label.show()
 
     def paintEvent(self, event):
         """Custom paint event for CRT effects."""
