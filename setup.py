@@ -1,7 +1,7 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 LlamaPhone - Setup Script
-Downloads and configures the AI model
+Checks prerequisites and installs dependencies.
 """
 
 import os
@@ -12,29 +12,18 @@ import sys
 
 def print_header():
     print("""
-    ╔═══════════════════════════════════════════════════════════════╗
-    ║                                                               ║
-    ║   ██╗  ██╗███████╗███╗   ███╗██╗███╗   ██╗ ██████╗           ║
-    ║   ██║ ██╔╝██╔════╝████╗ ████║██║████╗  ██║██╔════╝           ║
-    ║   █████╔╝ █████╗  ██╔████╔██║██║██╔██╗ ██║██║  ███╗          ║
-    ║   ██╔═██╗ ██╔══╝  ██║╚██╔╝██║██║██║╚██╗██║██║   ██║          ║
-    ║   ██║  ██╗███████╗██║ ╚═╝ ██║██║██║ ╚████║╚██████╔╝          ║
-    ║   ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝╚═╝╚═╝  ╚═══╝ ╚═════╝           ║
-    ║                                                               ║
-    ║   ═══════════ AI MOBILE REPAIR CONSOLE ═══════════          ║
-    ║                                                               ║
-    ╚═══════════════════════════════════════════════════════════════╝
+    ╔═══════════════════════════════════════════╗
+    ║   LLAMAPHONE  -  AI Mobile Repair Console ║
+    ╚═══════════════════════════════════════════╝
     """)
 
 
 def check_python():
     """Check Python version."""
     if sys.version_info < (3, 10):
-        print("❌ Python 3.10+ required!")
-        print(f"   Current version: {sys.version}")
-        return False
-    print(f"✓ Python {sys.version_info.major}.{sys.version_info.minor} detected")
-    return True
+        print(f"❌ Python 3.10+ required (found {sys.version_info.major}.{sys.version_info.minor})")
+        sys.exit(1)
+    print(f"✓ Python {sys.version_info.major}.{sys.version_info.minor}")
 
 
 def check_ollama():
@@ -42,18 +31,14 @@ def check_ollama():
     try:
         result = subprocess.run(
             ["ollama", "--version"],
-            capture_output=True,
-            text=True,
-            timeout=5
+            capture_output=True, text=True, timeout=5
         )
         if result.returncode == 0:
-            print(f"✓ Ollama detected: {result.stdout.strip()}")
+            print(f"✓ Ollama: {result.stdout.strip()}")
             return True
     except (subprocess.TimeoutExpired, FileNotFoundError):
         pass
-
-    print("⚠ Ollama not detected")
-    print("   Install from: https://ollama.ai/")
+    print("⚠  Ollama not found — install from https://ollama.ai/ then run: ollama pull qwen2.5-coder:7b")
     return False
 
 
@@ -62,137 +47,68 @@ def check_adb():
     try:
         result = subprocess.run(
             ["adb", "version"],
-            capture_output=True,
-            text=True,
-            timeout=5
+            capture_output=True, text=True, timeout=5
         )
         if result.returncode == 0:
-            version_line = result.stdout.split('\n')[0]
-            print(f"✓ ADB detected: {version_line}")
+            print(f"✓ ADB: {result.stdout.splitlines()[0]}")
             return True
     except (subprocess.TimeoutExpired, FileNotFoundError):
         pass
-
-    print("⚠ ADB not detected")
-    print("   Install Android SDK Platform Tools")
+    print("⚠  ADB not found — install Android SDK Platform Tools and add to PATH")
     return False
 
 
 def install_dependencies():
     """Install Python dependencies."""
-    print("\n📦 Installing Python dependencies...")
-
-    try:
-        subprocess.run(
-            [sys.executable, "-m", "pip", "install", "-r", "requirements.txt"],
-            check=True
-        )
-        print("✓ Dependencies installed")
-        return True
-    except subprocess.CalledProcessError:
-        print("❌ Failed to install dependencies")
-        return False
+    print("\n📦 Installing dependencies...")
+    subprocess.run(
+        [sys.executable, "-m", "pip", "install", "-r", "requirements.txt", "--quiet"],
+        check=True
+    )
+    print("✓ Dependencies installed")
 
 
-def download_model():
-    """Download the AI model."""
-    print("\n🤖 Downloading AI Model...")
-    print("   Recommended: Qwen2.5-Coder-7B")
-    print()
-
-    models = {
-        "1": ("qwen2.5-coder:7b", "Qwen2.5-Coder 7B (Recommended - best for code)"),
-        "2": ("codellama:7b", "CodeLlama 7B (Good for code generation)"),
-        "3": ("mistral:7b", "Mistral 7B (General purpose)"),
-        "4": ("llama3:8b", "Llama 3 8B (General purpose)"),
-    }
-
-    print("Available models:")
-    for key, (_model, desc) in models.items():
-        print(f"  [{key}] {desc}")
-    print()
-
-    choice = input("Select model (1-4) or Enter for default [1]: ").strip() or "1"
-
-    model_name = models.get(choice, models["1"])[0]
-
-    print(f"\n📥 Pulling {model_name}...")
-    print("   This may take several minutes depending on your internet speed...")
-
-    try:
-        subprocess.run(["ollama", "pull", model_name], check=True)
-        print(f"✓ {model_name} downloaded successfully!")
-        return True
-    except subprocess.CalledProcessError:
-        print(f"❌ Failed to download {model_name}")
-        return False
-
-
-def create_shortcuts():
-    """Create desktop shortcuts (if possible)."""
+def create_launcher():
+    """Create a platform-specific launch script."""
     home = os.path.expanduser("~")
     project_path = os.path.dirname(os.path.abspath(__file__))
 
     if platform.system() == "Windows":
         script_path = os.path.join(home, "llamaphone.bat")
-        launcher = f"""@echo off
-cd /d "{project_path}"
-python llamaphone.py
-"""
+        content = f'@echo off\ncd /d "{project_path}"\npython llamaphone.py %*\n'
     else:
         script_path = os.path.join(home, "llamaphone.sh")
-        launcher = f"""#!/bin/bash
-cd "{project_path}"
-python llamaphone.py
-"""
+        content = f'#!/bin/bash\ncd "{project_path}"\npython3 llamaphone.py "$@"\n'
 
     try:
-        with open(script_path, 'w') as f:
-            f.write(launcher)
+        with open(script_path, "w") as f:
+            f.write(content)
         if platform.system() != "Windows":
             os.chmod(script_path, 0o755)
-        print(f"\n✓ Launcher script created: {script_path}")
-    except Exception:
-        pass
+        print(f"✓ Launcher created: {script_path}")
+    except Exception as e:
+        print(f"⚠  Could not create launcher: {e}")
 
 
 def main():
-    """Main setup function."""
     print_header()
+    print("Checking requirements...\n")
 
-    print("Setting up LlamaPhone...\n")
-
-    # Check requirements
-    if not check_python():
-        sys.exit(1)
-
+    check_python()
     check_ollama()
     check_adb()
 
-    # Install dependencies
-    install_dependencies()
+    try:
+        install_dependencies()
+    except subprocess.CalledProcessError:
+        print("❌ Failed to install dependencies — check your pip/internet connection")
+        sys.exit(1)
 
-    # Download model
-    if check_ollama():
-        download_model()
+    create_launcher()
 
-    # Create shortcuts
-    create_shortcuts()
-
-    print("\n" + "="*60)
-    print("Setup complete!")
-    print("="*60)
-    print()
-    print("To run LlamaPhone:")
-    print("  cd llamaphone")
-    print("  python llamaphone.py")
-    print()
-    print("Or use the launcher script:")
-    if platform.system() == "Windows":
-        print("  %USERPROFILE%\\llamaphone.bat")
-    else:
-        print("  ~/llamaphone.sh")
-    print()
+    print("\n" + "=" * 44)
+    print("  Setup complete!  Run: python llamaphone.py")
+    print("=" * 44 + "\n")
 
 
 if __name__ == "__main__":
