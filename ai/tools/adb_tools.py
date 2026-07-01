@@ -156,7 +156,9 @@ class ADBTools:
         args = []
         if device_id:
             args.extend(["-s", device_id])
-        args.extend(["logcat", "-d"])
+        args.append("logcat")
+        if options:
+            args.extend(options.split())
         return self._run_command(args, timeout=timeout)
 
     def get_serialno(self, device_id: str | None) -> str | None:

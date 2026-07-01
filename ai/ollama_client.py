@@ -254,7 +254,9 @@ class OllamaClient:
                     if line:
                         data = json.loads(line)
                         status = data.get("status", "")
-                        progress = data.get("progress", 0)
+                        completed = data.get("completed", 0)
+                        total = data.get("total", 0)
+                        progress = int((completed / total) * 100) if total > 0 else 0
 
                         if progress_callback:
                             progress_callback(status, progress)

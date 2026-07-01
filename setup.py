@@ -5,6 +5,7 @@ Downloads and configures the AI model
 """
 
 import os
+import platform
 import subprocess
 import sys
 
@@ -130,12 +131,17 @@ def download_model():
 def create_shortcuts():
     """Create desktop shortcuts (if possible)."""
     home = os.path.expanduser("~")
-
-    # Create a simple launcher script
-    script_path = os.path.join(home, "llamaphone.sh")
     project_path = os.path.dirname(os.path.abspath(__file__))
 
-    launcher = f"""#!/bin/bash
+    if platform.system() == "Windows":
+        script_path = os.path.join(home, "llamaphone.bat")
+        launcher = f"""@echo off
+cd /d "{project_path}"
+python llamaphone.py
+"""
+    else:
+        script_path = os.path.join(home, "llamaphone.sh")
+        launcher = f"""#!/bin/bash
 cd "{project_path}"
 python llamaphone.py
 """
@@ -143,7 +149,8 @@ python llamaphone.py
     try:
         with open(script_path, 'w') as f:
             f.write(launcher)
-        os.chmod(script_path, 0o755)
+        if platform.system() != "Windows":
+            os.chmod(script_path, 0o755)
         print(f"\n✓ Launcher script created: {script_path}")
     except Exception:
         pass
@@ -181,7 +188,10 @@ def main():
     print("  python llamaphone.py")
     print()
     print("Or use the launcher script:")
-    print("  ~/llamaphone.sh")
+    if platform.system() == "Windows":
+        print("  %USERPROFILE%\\llamaphone.bat")
+    else:
+        print("  ~/llamaphone.sh")
     print()
 
 

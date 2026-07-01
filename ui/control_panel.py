@@ -139,8 +139,8 @@ class ControlPanel(QWidget):
 
         return frame
 
-    def create_module_buttons(self):
-        """Create the module selection buttons."""
+    def create_module_buttons(self, layout):
+        """Create the module selection buttons and add them to layout."""
         button_widget = QWidget()
         button_layout = QVBoxLayout(button_widget)
         button_layout.setSpacing(8)
@@ -150,7 +150,7 @@ class ControlPanel(QWidget):
             btn.clicked.connect(lambda checked, n=name: self.select_module(n))
             button_layout.addWidget(btn)
 
-        return button_widget
+        layout.addWidget(button_widget)
 
     def create_volume_knob(self):
         """Create the volume control knob."""
@@ -215,13 +215,10 @@ class ControlPanel(QWidget):
 class RotaryKnob(QWidget):
     """Rotary knob control widget."""
 
-    valueChanged = None  # Will be set in __init__ via pyqtSignal
+    valueChanged = pyqtSignal(int)
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        from PyQt6.QtCore import pyqtSignal
-        self.valueChanged = pyqtSignal(int)
-
         self._value = 0
         self._minimum = 0
         self._maximum = 100

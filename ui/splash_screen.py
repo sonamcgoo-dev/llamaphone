@@ -246,12 +246,13 @@ class SplashScreen(QWidget):
     def draw_scanlines(self, painter):
         """Draw CRT scanline effect."""
         painter.setPen(QColor(0, 0, 0, 30))
-        for y in range(0, self.screen.height(), 3):
+        screen_rect = self.screen.geometry()
+        for y in range(0, screen_rect.height(), 3):
             painter.drawLine(
-                self.screen.x() + self.screen.geometry().left(),
-                self.screen.y() + y,
-                self.screen.x() + self.screen.geometry().right(),
-                self.screen.y() + y
+                screen_rect.left(),
+                screen_rect.top() + y,
+                screen_rect.right(),
+                screen_rect.top() + y
             )
 
     def draw_vignette(self, painter):

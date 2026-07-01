@@ -103,11 +103,11 @@ class FastbootTools:
     def getvar(self, variable: str) -> dict[str, Any]:
         """Get a bootloader variable."""
         result = self._run_command(["getvar", variable])
-        if result["success"]:
-            # Parse the output
-            match = re.search(rf"{variable}:\s*(.+)", result["output"])
-            if match:
-                result["value"] = match.group(1).strip()
+        # Fastboot writes getvar output to stderr, not stdout
+        output_to_parse = result["error"] if result["error"] else result["output"]
+        match = re.search(rf"{variable}:\s*(.+)", output_to_parse)
+        if match:
+            result["value"] = match.group(1).strip()
         return result
 
     def oem(self, command: str) -> dict[str, Any]:

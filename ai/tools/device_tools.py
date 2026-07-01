@@ -5,6 +5,7 @@ Device discovery, port scanning, and network utilities
 
 import concurrent.futures
 import contextlib
+import platform
 import socket
 import subprocess
 from dataclasses import dataclass
@@ -143,11 +144,18 @@ class DeviceDiscoveryTools:
 
         # Try to get network interfaces
         try:
-            result = subprocess.run(
-                ["ip", "addr", "show"],
-                capture_output=True,
-                text=True
-            )
+            if platform.system() == "Windows":
+                result = subprocess.run(
+                    ["ipconfig"],
+                    capture_output=True,
+                    text=True
+                )
+            else:
+                result = subprocess.run(
+                    ["ip", "addr", "show"],
+                    capture_output=True,
+                    text=True
+                )
             info["interfaces"].append(result.stdout)
         except Exception:
             pass
@@ -157,11 +165,11 @@ class DeviceDiscoveryTools:
     def ping_device(self, ip: str, count: int = 2) -> bool:
         """Ping a device to check connectivity."""
         try:
-            result = subprocess.run(
-                ["ping", "-c", str(count), "-W", "1", ip],
-                capture_output=True,
-                timeout=5
-            )
+            if platform.system() == "Windows":
+                cmd = ["ping", "-n", str(count), "-w", "1000", ip]
+            else:
+                cmd = ["ping", "-c", str(count), "-W", "1", ip]
+            result = subprocess.run(cmd, capture_output=True, timeout=5)
             return result.returncode == 0
         except Exception:
             return False
