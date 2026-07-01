@@ -49,6 +49,8 @@ def main():
         app.setApplicationVersion("1.0.0")
         app.setOrganizationName("LlamaPhone")
         app.setWindowIcon(QIcon(resource_path("assets", "icon.png")))
+        app.setQuitOnLastWindowClosed(True)
+        app.lastWindowClosed.connect(lambda: app.exit(0))
 
         # Set application-wide style
         app.setStyle("Fusion")
