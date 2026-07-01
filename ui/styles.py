@@ -8,42 +8,42 @@ Styling for the nostalgic tube TV aesthetic
 # CRT Color Palette
 COLORS = {
     # Phosphor Colors
-    "phosphor_green": "#33FF33",
-    "phosphor_amber": "#FFB000",
-    "phosphor_blue": "#00AAFF",
-    "phosphor_red": "#FF3333",
-    "phosphor_cyan": "#00FFFF",
+    "phosphor_green": "#66FF7A",
+    "phosphor_amber": "#FF4BD8",
+    "phosphor_blue": "#3AD9FF",
+    "phosphor_red": "#FF4A8B",
+    "phosphor_cyan": "#48F8FF",
 
     # Cabinet Colors
-    "cabinet_dark": "#1A1A1A",
-    "cabinet_medium": "#2D2D2D",
-    "cabinet_light": "#404040",
-    "cabinet_highlight": "#555555",
-    "cabinet_edge": "#0A0A0A",
+    "cabinet_dark": "#0B0F23",
+    "cabinet_medium": "#161A3A",
+    "cabinet_light": "#2A1E57",
+    "cabinet_highlight": "#3D2D78",
+    "cabinet_edge": "#46D8FF",
 
     # Screen Colors
-    "screen_black": "#0D0D0D",
-    "screen_glow": "#1A3A1A",
+    "screen_black": "#07120F",
+    "screen_glow": "#133422",
     "scanline": "rgba(0, 0, 0, 0.3)",
 
     # Button Colors
-    "button_normal": "#3A3A3A",
-    "button_hover": "#4A4A4A",
-    "button_pressed": "#2A2A2A",
-    "button_led_off": "#331111",
-    "button_led_on": "#FF3333",
+    "button_normal": "#201B44",
+    "button_hover": "#302965",
+    "button_pressed": "#151132",
+    "button_led_off": "#2A1036",
+    "button_led_on": "#FF4BD8",
 
     # Text Colors
     "text_primary": "#33FF33",
     "text_secondary": "#FFB000",
-    "text_dim": "#228822",
+    "text_dim": "#4DAE77",
     "text_error": "#FF3333",
 
     # Status Colors
     "status_good": "#33FF33",
-    "status_warning": "#FFB000",
-    "status_error": "#FF3333",
-    "status_info": "#00AAFF",
+    "status_warning": "#FF4BD8",
+    "status_error": "#FF4A8B",
+    "status_info": "#3AD9FF",
 }
 
 # Typography
@@ -69,15 +69,18 @@ def get_crt_stylesheet():
     return f"""
 /* ==================== MAIN WINDOW ==================== */
 QMainWindow {{
-    background-color: {COLORS['cabinet_dark']};
+    background: qradialgradient(cx:0.5, cy:0.3, radius:1.1,
+        stop:0 {COLORS['cabinet_light']},
+        stop:0.45 {COLORS['cabinet_medium']},
+        stop:1 {COLORS['cabinet_dark']});
     border: none;
 }}
 
 /* ==================== TV CABINET FRAME ==================== */
 #tvFrame {{
     background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-        stop:0 {COLORS['cabinet_light']},
-        stop:0.3 {COLORS['cabinet_medium']},
+        stop:0 #341C7E,
+        stop:0.5 #1A1E5A,
         stop:1 {COLORS['cabinet_dark']});
     border-radius: 20px;
     border: 3px solid {COLORS['cabinet_edge']};
@@ -94,7 +97,10 @@ QMainWindow {{
 
 /* ==================== CRT SCREEN WITH EFFECTS ==================== */
 #crtScreen {{
-    background-color: {COLORS['screen_black']};
+    background: qradialgradient(cx:0.5, cy:0.5, radius:0.9,
+        stop:0 #4BFF6A,
+        stop:0.45 #2AAE51,
+        stop:1 {COLORS['screen_black']});
     border-radius: 10px;
     padding: 15px;
 }}
@@ -124,9 +130,9 @@ QMainWindow {{
 
 /* ==================== TEXT EDIT / TERMINAL ==================== */
 QTextEdit, QPlainTextEdit {{
-    background-color: {COLORS['screen_black']};
+    background-color: rgba(8, 18, 15, 220);
     color: {COLORS['phosphor_green']};
-    border: 2px solid {COLORS['cabinet_edge']};
+    border: 2px solid #3AD9FF;
     border-radius: 8px;
     padding: 10px;
     font-family: '{FONTS['terminal']}', monospace;
@@ -165,8 +171,8 @@ QPushButton {{
         stop:0 {COLORS['button_normal']},
         stop:0.5 {COLORS['cabinet_medium']},
         stop:1 {COLORS['button_pressed']});
-    color: {COLORS['phosphor_amber']};
-    border: 2px solid {COLORS['cabinet_edge']};
+    color: #FF70DF;
+    border: 2px solid #2CCEFF;
     border-radius: 8px;
     padding: 10px 15px;
     font-family: '{FONTS['button']}', sans-serif;
@@ -181,7 +187,7 @@ QPushButton:hover {{
         stop:0 {COLORS['button_hover']},
         stop:0.5 {COLORS['cabinet_light']},
         stop:1 {COLORS['button_normal']});
-    color: {COLORS['phosphor_green']};
+    color: #5DFF89;
 }}
 
 QPushButton:pressed {{
@@ -312,9 +318,9 @@ QTabBar::tab {{
 }}
 
 QTabBar::tab:selected {{
-    background-color: {COLORS['screen_black']};
-    color: {COLORS['phosphor_green']};
-    border-bottom: 2px solid {COLORS['phosphor_green']};
+    background-color: rgba(7, 18, 15, 220);
+    color: #5DFF89;
+    border-bottom: 2px solid #5DFF89;
 }}
 
 QTabBar::tab:hover:!selected {{
@@ -375,9 +381,9 @@ QToolTip {{
 
 /* ==================== STATUS BAR ==================== */
 QStatusBar {{
-    background-color: {COLORS['cabinet_dark']};
-    color: {COLORS['phosphor_amber']};
-    border-top: 2px solid {COLORS['cabinet_edge']};
+    background-color: #0E1230;
+    color: #FF70DF;
+    border-top: 2px solid #2CCEFF;
 }}
 
 QStatusBar::item {{

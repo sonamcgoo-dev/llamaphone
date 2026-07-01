@@ -52,7 +52,7 @@ class ControlPanel(QWidget):
         header = QLabel("CONTROLS")
         header.setAlignment(Qt.AlignmentFlag.AlignCenter)
         header.setStyleSheet("""
-            color: #888888;
+            color: #46D8FF;
             font-size: 12px;
             font-weight: bold;
             letter-spacing: 2px;
@@ -67,7 +67,7 @@ class ControlPanel(QWidget):
         # Separator
         separator = QFrame()
         separator.setFrameShape(QFrame.Shape.HLine)
-        separator.setStyleSheet("background-color: #333;")
+        separator.setStyleSheet("background-color: #46D8FF;")
         layout.addWidget(separator)
 
         # Module buttons
@@ -84,7 +84,7 @@ class ControlPanel(QWidget):
         brand = QLabel("LLAMAPHONE")
         brand.setAlignment(Qt.AlignmentFlag.AlignCenter)
         brand.setStyleSheet("""
-            color: #555555;
+            color: #FF70DF;
             font-size: 10px;
             font-weight: bold;
             letter-spacing: 3px;
@@ -95,7 +95,7 @@ class ControlPanel(QWidget):
         model_label = QLabel("LP-3000")
         model_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         model_label.setStyleSheet("""
-            color: #444444;
+            color: #46D8FF;
             font-size: 9px;
         """)
         layout.addWidget(model_label)
@@ -124,7 +124,7 @@ class ControlPanel(QWidget):
         self.channel_display = QLabel(f"{self.channels[0][0]}\n{self.channels[0][1]}")
         self.channel_display.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.channel_display.setStyleSheet("""
-            color: #33FF33;
+            color: #5DFF89;
             font-size: 14px;
             font-weight: bold;
             padding: 5px;
@@ -134,7 +134,7 @@ class ControlPanel(QWidget):
         # Module description
         self.channel_desc = QLabel(self.channels[0][2])
         self.channel_desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.channel_desc.setStyleSheet("color: #888888; font-size: 10px;")
+        self.channel_desc.setStyleSheet("color: #FF70DF; font-size: 10px;")
         frame_layout.addWidget(self.channel_desc)
 
         return frame
@@ -173,7 +173,7 @@ class ControlPanel(QWidget):
         led_layout = QHBoxLayout()
         led_layout.addStretch()
 
-        self.power_led = LEDIndicator(color="#33FF33")
+        self.power_led = LEDIndicator(color="#46D8FF")
         led_layout.addWidget(self.power_led)
 
         led_layout.addStretch()
@@ -328,28 +328,28 @@ class ModuleButton(QPushButton):
         self.setStyleSheet("""
             QPushButton {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #3A3A3A,
-                    stop:0.5 #2D2D2D,
-                    stop:1 #2A2A2A);
-                color: #FFB000;
-                border: 2px solid #1A1A1A;
+                    stop:0 #2A1E57,
+                    stop:0.5 #1A1E5A,
+                    stop:1 #151132);
+                color: #FF70DF;
+                border: 2px solid #2CCEFF;
                 border-radius: 8px;
                 font-size: 16px;
                 padding: 5px;
             }
             QPushButton:hover {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #4A4A4A,
-                    stop:0.5 #3A3A3A,
-                    stop:1 #333333);
-                color: #33FF33;
-                border: 2px solid #33FF33;
+                    stop:0 #3D2D78,
+                    stop:0.5 #302965,
+                    stop:1 #22204A);
+                color: #5DFF89;
+                border: 2px solid #5DFF89;
             }
             QPushButton:pressed {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #2A2A2A,
-                    stop:0.5 #1A1A1A,
-                    stop:1 #2A2A2A);
+                    stop:0 #16133A,
+                    stop:0.5 #10102A,
+                    stop:1 #16133A);
                 padding-top: 7px;
                 padding-bottom: 3px;
             }

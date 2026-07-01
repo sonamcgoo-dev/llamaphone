@@ -68,14 +68,14 @@ class MainWindow(QMainWindow):
         main_layout.setContentsMargins(15, 15, 15, 15)
         main_layout.setSpacing(10)
 
-        # Left side - TV Control Panel
+        # Left side - TV Screen Area
+        screen_container = self.create_screen_area()
+        main_layout.addWidget(screen_container, 1)
+
+        # Right side - TV Control Panel (matches reference layout)
         self.control_panel = ControlPanel(self)
         self.control_panel.setFixedWidth(180)
         main_layout.addWidget(self.control_panel)
-
-        # Right side - TV Screen Area
-        screen_container = self.create_screen_area()
-        main_layout.addWidget(screen_container, 1)
 
         # Bottom - Status Bar Area
         self.create_status_bar()
