@@ -3,6 +3,10 @@ LlamaPhone - Main Window
 Retro CRT TV-styled main application window
 """
 
+import shlex
+import socket
+import subprocess
+
 from PyQt6.QtCore import QTimer, pyqtSignal
 from PyQt6.QtGui import QAction, QColor, QPainter, QPen
 from PyQt6.QtWidgets import (
@@ -890,14 +894,57 @@ class MainWindow(QMainWindow):
         )
         self.screen_tabs.setCurrentIndex(0)  # Switch to terminal
 
+    def _run_cli(self, command: list[str], timeout: int = 30) -> tuple[int, str, str]:
+        """Run a CLI command and return (returncode, stdout, stderr)."""
+        result = subprocess.run(command, capture_output=True, text=True, timeout=timeout)
+        return result.returncode, result.stdout.strip(), result.stderr.strip()
+
     def scan_devices(self):
         """Scan for connected devices."""
+        self.device_list.clear()
         self.device_list.append("Scanning for devices...")
-        self.device_list.append("No ADB devices found.")
+        try:
+            return_code, output, error = self._run_cli(["adb", "devices", "-l"], timeout=15)
+            if return_code != 0:
+                self.device_list.append(f"ADB error: {error or output}")
+                self.adb_connected = False
+                return
+
+            lines = [line.strip() for line in output.splitlines()[1:] if line.strip()]
+            ready = [line for line in lines if "\tdevice" in line]
+            if ready:
+                for entry in ready:
+                    self.device_list.append(entry)
+                self.current_device = ready[0].split()[0]
+                self.adb_connected = True
+                self.adb_status.setText("💻 ADB: CONNECTED")
+                self.adb_status.setStyleSheet("color: #33FF33; padding: 0 10px;")
+                self.device_status.setText(f"📱 Device: {self.current_device}")
+            else:
+                self.device_list.append("No ADB devices found.")
+                self.current_device = None
+                self.adb_connected = False
+                self.adb_status.setText("💻 ADB: DISCONNECTED")
+                self.adb_status.setStyleSheet("color: #FFB000; padding: 0 10px;")
+                self.device_status.setText("📱 Device: NONE")
+        except (subprocess.SubprocessError, FileNotFoundError) as error:
+            self.device_list.append(f"Scan failed: {error}")
+            self.adb_connected = False
 
     def connect_device(self):
         """Connect to selected device."""
-        self.device_list.append("Connecting...")
+        connection_type = self.conn_type_combo.currentText()
+        if connection_type in {"WiFi", "TCP/IP"}:
+            ip = self.port_ip_input.text().strip()
+            if not ip:
+                self.device_list.append("Enter an IP in the Port Scanner field first.")
+                return
+            target = ip if ":" in ip else f"{ip}:5555"
+            return_code, output, error = self._run_cli(["adb", "connect", target], timeout=20)
+            self.device_list.append(output or error or f"Connection attempt finished for {target}")
+        else:
+            self.device_list.append("Checking USB-connected devices...")
+        self.scan_devices()
 
     def refresh_devices(self):
         """Refresh device list."""
@@ -905,16 +952,45 @@ class MainWindow(QMainWindow):
 
     def scan_ports(self):
         """Scan ports on IP address."""
-        ip = self.port_ip_input.text()
-        if ip:
-            self.port_results.append(f"Scanning {ip}...")
+        ip = self.port_ip_input.text().strip()
+        self.port_results.clear()
+        if not ip:
+            self.port_results.append("Enter an IP address.")
+            return
+
+        self.port_results.append(f"Scanning {ip}...")
+        adb_ports = [5555, 5554, 5037]
+        open_ports: list[int] = []
+        for port in adb_ports:
+            try:
+                with socket.create_connection((ip, port), timeout=1.0):
+                    open_ports.append(port)
+            except OSError:
+                continue
+
+        if open_ports:
+            self.port_results.append(f"Open ports: {', '.join(str(p) for p in open_ports)}")
+        else:
             self.port_results.append("Scan complete. No open ADB ports found.")
 
     def execute_adb_command(self, command):
         """Execute an ADB command."""
-        self.adb_output.append(f"$ adb {command}")
-        self.adb_output.append("(Command would execute here)")
-        self.terminal_screen.append_message("System", f"Executed: adb {command}")
+        args = shlex.split(command, posix=False)
+        if args and args[0].lower() == "adb":
+            args = args[1:]
+        cmd = ["adb"] + args
+        self.adb_output.append(f"$ {' '.join(cmd)}")
+        try:
+            return_code, output, error = self._run_cli(cmd, timeout=120)
+            if output:
+                self.adb_output.append(output)
+            if error:
+                self.adb_output.append(error)
+            if return_code != 0 and not output and not error:
+                self.adb_output.append(f"Command failed with exit code {return_code}")
+            self.terminal_screen.append_message("System", f"ADB: {' '.join(args) or 'help'}", is_ai=True)
+        except (subprocess.SubprocessError, FileNotFoundError) as ex:
+            self.adb_output.append(f"Execution failed: {ex}")
 
     def execute_custom_adb(self):
         """Execute custom ADB command."""
@@ -925,10 +1001,25 @@ class MainWindow(QMainWindow):
 
     def execute_fastboot(self, command):
         """Execute a fastboot command."""
-        self.terminal_screen.append_message(
-            "System",
-            f"Fastboot command: fastboot {command}"
-        )
+        mapping = {
+            "recovery": ["reboot", "recovery"],
+            "bootloader": ["reboot-bootloader"],
+            "unlock": ["oem", "unlock"],
+            "lock": ["oem", "lock"],
+        }
+        args = mapping.get(command, shlex.split(command, posix=False))
+        cmd = ["fastboot"] + args
+        self.terminal_screen.append_message("System", f"$ {' '.join(cmd)}", is_ai=True)
+        try:
+            return_code, output, error = self._run_cli(cmd, timeout=180)
+            if output:
+                self.terminal_screen.append_message("Fastboot", output, is_ai=True)
+            if error:
+                self.terminal_screen.append_message("Fastboot", error, is_ai=True)
+            if return_code != 0 and not output and not error:
+                self.terminal_screen.append_message("Fastboot", f"Command failed: {return_code}", is_ai=True)
+        except (subprocess.SubprocessError, FileNotFoundError) as ex:
+            self.terminal_screen.append_message("Fastboot", f"Execution failed: {ex}", is_ai=True)
 
     def browse_flash_file(self):
         """Browse for flash file."""
@@ -941,10 +1032,25 @@ class MainWindow(QMainWindow):
 
     def flash_partition(self):
         """Flash a partition image."""
-        self.terminal_screen.append_message(
-            "System",
-            f"Flash operation initiated for partition: {self.partition_combo.currentText()}"
-        )
+        image_path = self.flash_file_input.text().strip()
+        partition = self.partition_combo.currentText().strip()
+        if not image_path:
+            self.terminal_screen.append_message("System", "Select an image file first.", is_ai=True)
+            return
+        cmd = ["fastboot", "flash", partition, image_path]
+        self.terminal_screen.append_message("System", f"$ {' '.join(cmd)}", is_ai=True)
+        try:
+            return_code, output, error = self._run_cli(cmd, timeout=300)
+            if output:
+                self.terminal_screen.append_message("Fastboot", output, is_ai=True)
+            if error:
+                self.terminal_screen.append_message("Fastboot", error, is_ai=True)
+            if return_code == 0:
+                self.terminal_screen.append_message("System", "Flash completed.", is_ai=True)
+            else:
+                self.terminal_screen.append_message("System", f"Flash failed: {return_code}", is_ai=True)
+        except (subprocess.SubprocessError, FileNotFoundError) as ex:
+            self.terminal_screen.append_message("System", f"Flash failed: {ex}", is_ai=True)
 
     def show_about(self):
         """Show about dialog."""

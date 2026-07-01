@@ -17,21 +17,13 @@ if errorlevel 1 (
     exit /b 1
 )
 
-REM Upgrade pip silently
-python -m pip install --upgrade pip --quiet
-
-REM Install runtime dependencies
-echo Installing dependencies...
-pip install PyQt6 httpx --quiet
+REM Run full onboarding (deps + adb + ollama + model pull + launcher)
+python setup.py
 if errorlevel 1 (
-    echo ERROR: pip install failed. Check your internet connection.
+    echo ERROR: Onboarding failed.
     pause
     exit /b 1
 )
-
-REM Create desktop launcher
-echo Creating launcher...
-python -c "import os,sys; home=os.path.expanduser('~'); path=os.path.dirname(os.path.abspath('llamaphone.py')); open(os.path.join(home,'llamaphone.bat'),'w').write(f'@echo off\ncd /d \"{path}\"\npython llamaphone.py %%*\n'); print('Launcher: ' + os.path.join(home,'llamaphone.bat'))"
 
 echo.
 echo ============================================

@@ -3,7 +3,7 @@ LlamaPhone - Terminal Screen
 AI Chat interface with retro terminal styling
 """
 
-from PyQt6.QtCore import Qt, QThread
+from PyQt6.QtCore import QObject, QThread, Qt, pyqtSignal
 from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -14,6 +14,35 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from ai.ollama_client import LlamaPhoneAI, OllamaClient
+
+
+class AIWorker(QObject):
+    """Background worker for Ollama requests."""
+
+    finished = pyqtSignal(str)
+    failed = pyqtSignal(str)
+
+    def __init__(self, user_input: str):
+        super().__init__()
+        self.user_input = user_input
+
+    def run(self):
+        try:
+            client = OllamaClient()
+            if not client.is_available():
+                self.failed.emit("Ollama is not running. Start it, then try again.")
+                return
+            ai = LlamaPhoneAI(client)
+            result = ai.chat(self.user_input)
+            content = result.get("content", "").strip()
+            if not content:
+                content = "I ran, but returned an empty response. Try rephrasing your prompt."
+            self.finished.emit(content)
+            client.close()
+        except Exception as error:
+            self.failed.emit(f"AI request failed: {error}")
+
 
 class TerminalScreen(QWidget):
     """AI Terminal chat screen with retro CRT styling."""
@@ -22,6 +51,7 @@ class TerminalScreen(QWidget):
         super().__init__(parent)
         self.messages = []
         self.ai_thread = None
+        self.typing_indicator = None
 
         self.init_ui()
 
@@ -160,166 +190,41 @@ class TerminalScreen(QWidget):
         self.append_message("You", text, is_ai=False)
         self.input_field.clear()
 
-        # Simulate AI response
-        self.simulate_ai_response(text)
+        if self.ai_thread is not None and self.ai_thread.isRunning():
+            self.append_message("System", "Previous request is still running. Please wait.", is_ai=True)
+            return
 
-    def simulate_ai_response(self, user_input):
-        """Simulate AI response for demo."""
-        # Typing indicator
-        typing = QLabel("AI is thinking...")
-        typing.setStyleSheet("""
+        self.typing_indicator = QLabel("AI is thinking...")
+        self.typing_indicator.setStyleSheet("""
             color: #666666;
             font-style: italic;
             padding: 10px;
         """)
-        self.chat_layout.addWidget(typing)
+        self.chat_layout.addWidget(self.typing_indicator)
 
-        # Simulate delay
-        QThread.msleep(500)
+        self.ai_thread = QThread(self)
+        self.ai_worker = AIWorker(text)
+        self.ai_worker.moveToThread(self.ai_thread)
+        self.ai_thread.started.connect(self.ai_worker.run)
+        self.ai_worker.finished.connect(self.on_ai_response)
+        self.ai_worker.failed.connect(self.on_ai_error)
+        self.ai_worker.finished.connect(self.ai_thread.quit)
+        self.ai_worker.failed.connect(self.ai_thread.quit)
+        self.ai_thread.finished.connect(self.ai_thread.deleteLater)
+        self.ai_thread.start()
 
-        # Remove typing indicator
-        typing.deleteLater()
+    def remove_typing_indicator(self):
+        if self.typing_indicator is not None:
+            self.typing_indicator.deleteLater()
+            self.typing_indicator = None
 
-        # Generate response based on input
-        response = self.generate_response(user_input)
+    def on_ai_response(self, response: str):
+        self.remove_typing_indicator()
         self.append_message("LlamaPhone AI", response, is_ai=True)
 
-    def generate_response(self, user_input):
-        """Generate a contextual response."""
-        user_input_lower = user_input.lower()
-
-        if any(word in user_input_lower for word in ['hello', 'hi', 'hey']):
-            return "Hello! 👋 I'm your AI repair assistant. How can I help you today?"
-
-        elif any(word in user_input_lower for word in ['adb', 'connect', 'device']):
-            return (
-                "To connect a device via ADB:\n\n"
-                "1. Enable USB Debugging on the device:\n"
-                "   Settings → Developer Options → USB Debugging\n\n"
-                "2. Connect via USB cable\n\n"
-                "3. Authorize the computer on the device\n\n"
-                "4. Run `adb devices` to verify connection\n\n"
-                "Would you like me to walk you through any specific step?"
-            )
-
-        elif any(word in user_input_lower for word in ['frp', 'bypass', 'google']):
-            return (
-                "FRP (Factory Reset Protection) Bypass:\n\n"
-                "⚠️ **WARNING**: Only bypass FRP on devices you own!\n\n"
-                "Common methods:\n"
-                "1. **PIN/Pattern Backup** - Try last known credentials\n"
-                "2. **Samsung**: Emergency dial → `*#0*#`\n"
-                "3. **Google FRP**: Account recovery after 72 hours\n"
-                "4. **OEM Methods**: Various exploits by manufacturer\n\n"
-                "Which device brand are you working with?"
-            )
-
-        elif any(word in user_input_lower for word in ['bootloader', 'unlock']):
-            return (
-                "Bootloader Unlock Process:\n\n"
-                "⚠️ **WARNING**: Unlocking erases ALL data!\n\n"
-                "**Samsung**: Settings → Developer → OEM Unlock (enable)\n"
-                "Then: `fastboot oem unlock`\n\n"
-                "**Google/Pixel**: `fastboot flashing unlock`\n\n"
-                "**OnePlus**: Developer → OEM Unlock → `fastboot oem unlock`\n\n"
-                "**Xiaomi**: Mi Unlock Status → Add account → `fastboot oem unlock`\n\n"
-                "What's your device model?"
-            )
-
-        elif any(word in user_input_lower for word in ['root', 'magisk']):
-            return (
-                "Root Access Methods:\n\n"
-                "**Magisk (Recommended)**:\n"
-                "1. Unlock bootloader\n"
-                "2. Boot to recovery\n"
-                "3. Flash Magisk ZIP\n"
-                "4. Install Magisk Manager app\n\n"
-                "**Shizuku (No Root)**:\n"
-                "1. Install Shizuku APK\n"
-                "2. Enable USB Debugging\n"
-                "3. Grant ADB permissions\n"
-                "4. Use apps with root-like access via ADB\n\n"
-                "Would you like detailed steps for a specific device?"
-            )
-
-        elif any(word in user_input_lower for word in ['fastboot', 'flash']):
-            return (
-                "Fastboot Commands:\n\n"
-                "```\n"
-                "fastboot devices           # List devices\n"
-                "fastboot reboot            # Normal reboot\n"
-                "fastboot reboot recovery   # Boot to recovery\n"
-                "fastboot flash boot boot.img  # Flash boot image\n"
-                "fastboot oem unlock        # Unlock bootloader\n"
-                "fastboot flashing unlock   # Unlock (Pixel/Samsung)\n"
-                "fastboot erase userdata    # Wipe data\n"
-                "```\n\n"
-                "Which command would you like help with?"
-            )
-
-        elif any(word in user_input_lower for word in ['script', 'python', 'automation']):
-            return (
-                "I can generate Python scripts for repair automation!\n\n"
-                "Here's an example ADB script:\n\n"
-                "```python\n"
-                "import subprocess\n\n"
-                "def connect_wifi_device(ip, port=5555):\n"
-                "    subprocess.run(['adb', 'tcpip', port])\n"
-                "    time.sleep(2)\n"
-                "    subprocess.run([\n"
-                "        'adb', 'connect', f'{ip}:{port}'\n"
-                "    ])\n\n"
-                "def install_apk(apk_path):\n"
-                "    subprocess.run([\n"
-                "        'adb', 'install', '-r', apk_path\n"
-                "    ])\n"
-                "```\n\n"
-                "What specific task would you like to automate?"
-            )
-
-        elif any(word in user_input_lower for word in ['exploit', 'cve', 'vulnerability']):
-            return (
-                "⚠️ **Security Notice**: Only use exploits on authorized devices!\n\n"
-                "I have a database of known exploits organized by:\n"
-                "• Device manufacturer\n"
-                "• Android version\n"
-                "• Attack type\n\n"
-                "This database is for educational and authorized repair purposes.\n"
-                "What's the device model you're researching?"
-            )
-
-        elif any(word in user_input_lower for word in ['help', 'commands', 'what can you']):
-            return (
-                "**I can help you with:**\n\n"
-                "📱 **Device Connection**\n"
-                "   ADB over USB/WiFi, device pairing\n\n"
-                "🔓 **Bypass & Unlock**\n"
-                "   FRP, screen locks, network locks\n\n"
-                "⚡ **Flash Operations**\n"
-                "   Fastboot, recovery, firmware\n\n"
-                "🔧 **Bootloader**\n"
-                "   Unlock, lock, check status\n\n"
-                "👑 **Root Access**\n"
-                "   Magisk, Shizuku, KernelSU\n\n"
-                "💻 **Scripting**\n"
-                "   Python automation scripts\n\n"
-                "💣 **Exploit Database**\n"
-                "   Known vulnerabilities by device\n\n"
-                "Just describe what you need!"
-            )
-
-        else:
-            return (
-                f"I understand you need help with: **{user_input}**\n\n"
-                "I specialize in mobile repair and device management.\n\n"
-                "Try asking about:\n"
-                "• Device connection (ADB/WiFi)\n"
-                "• FRP bypass procedures\n"
-                "• Bootloader unlock steps\n"
-                "• Root access methods\n"
-                "• Script generation\n\n"
-                "What would you like to do?"
-            )
+    def on_ai_error(self, error_message: str):
+        self.remove_typing_indicator()
+        self.append_message("System", error_message, is_ai=True)
 
 
 class MessageBubble(QWidget):

@@ -1,13 +1,21 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
-LlamaPhone - Setup Script
-Checks prerequisites and installs dependencies.
+LlamaPhone onboarding script.
+Installs Python deps, ADB platform-tools, Ollama, and pulls the default model.
 """
 
 import os
 import platform
+import shutil
 import subprocess
 import sys
+import urllib.request
+import zipfile
+from pathlib import Path
+
+DEFAULT_MODEL = "qwen2.5-coder:7b"
+LOCAL_STATE_DIR = Path.home() / ".llamaphone"
+LOCAL_PLATFORM_TOOLS_DIR = LOCAL_STATE_DIR / "platform-tools"
 
 
 def print_header():
@@ -18,97 +26,173 @@ def print_header():
     """)
 
 
+def run_command(cmd: list[str], timeout: int | None = None, check: bool = False) -> subprocess.CompletedProcess:
+    return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, check=check)
+
+
 def check_python():
-    """Check Python version."""
     if sys.version_info < (3, 10):
         print(f"❌ Python 3.10+ required (found {sys.version_info.major}.{sys.version_info.minor})")
         sys.exit(1)
     print(f"✓ Python {sys.version_info.major}.{sys.version_info.minor}")
 
 
-def check_ollama():
-    """Check if Ollama is installed."""
-    try:
-        result = subprocess.run(
-            ["ollama", "--version"],
-            capture_output=True, text=True, timeout=5
-        )
-        if result.returncode == 0:
-            print(f"✓ Ollama: {result.stdout.strip()}")
-            return True
-    except (subprocess.TimeoutExpired, FileNotFoundError):
-        pass
-    print("⚠  Ollama not found — install from https://ollama.ai/ then run: ollama pull qwen2.5-coder:7b")
+def install_python_dependencies():
+    print("\n📦 Installing Python dependencies...")
+    run_command([sys.executable, "-m", "pip", "install", "--upgrade", "pip"], check=True)
+    run_command([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"], check=True)
+    print("✓ Python dependencies installed")
+
+
+def install_adb_windows():
+    LOCAL_STATE_DIR.mkdir(parents=True, exist_ok=True)
+    zip_path = LOCAL_STATE_DIR / "platform-tools-latest-windows.zip"
+    url = "https://dl.google.com/android/repository/platform-tools-latest-windows.zip"
+    print("⬇ Downloading Android Platform Tools...")
+    urllib.request.urlretrieve(url, zip_path)
+    with zipfile.ZipFile(zip_path, "r") as archive:
+        archive.extractall(LOCAL_STATE_DIR)
+    zip_path.unlink(missing_ok=True)
+
+
+def check_adb() -> bool:
+    adb_from_path = shutil.which("adb")
+    adb_local = LOCAL_PLATFORM_TOOLS_DIR / ("adb.exe" if platform.system() == "Windows" else "adb")
+    adb_binary = adb_from_path or (str(adb_local) if adb_local.exists() else None)
+    if not adb_binary:
+        return False
+
+    result = run_command([adb_binary, "version"], timeout=5)
+    if result.returncode == 0:
+        first_line = result.stdout.splitlines()[0] if result.stdout else "ADB detected"
+        print(f"✓ ADB: {first_line}")
+        return True
     return False
 
 
-def check_adb():
-    """Check if ADB is installed."""
-    try:
-        result = subprocess.run(
-            ["adb", "version"],
-            capture_output=True, text=True, timeout=5
-        )
-        if result.returncode == 0:
-            print(f"✓ ADB: {result.stdout.splitlines()[0]}")
-            return True
-    except (subprocess.TimeoutExpired, FileNotFoundError):
-        pass
-    print("⚠  ADB not found — install Android SDK Platform Tools and add to PATH")
-    return False
+def ensure_adb():
+    if check_adb():
+        return
+    if platform.system() == "Windows":
+        install_adb_windows()
+        if check_adb():
+            return
+    raise RuntimeError("ADB installation failed")
 
 
-def install_dependencies():
-    """Install Python dependencies."""
-    print("\n📦 Installing dependencies...")
-    subprocess.run(
-        [sys.executable, "-m", "pip", "install", "-r", "requirements.txt", "--quiet"],
-        check=True
+def install_ollama_windows():
+    if not shutil.which("winget"):
+        raise RuntimeError("winget not available to auto-install Ollama")
+    print("⬇ Installing Ollama with winget...")
+    run_command(
+        [
+            "winget",
+            "install",
+            "--id",
+            "Ollama.Ollama",
+            "-e",
+            "--accept-package-agreements",
+            "--accept-source-agreements",
+        ],
+        check=True,
     )
-    print("✓ Dependencies installed")
+
+
+def find_ollama_binary() -> str | None:
+    ollama = shutil.which("ollama")
+    if ollama:
+        return ollama
+    if platform.system() == "Windows":
+        candidates = [
+            Path.home() / "AppData" / "Local" / "Programs" / "Ollama" / "ollama.exe",
+            Path("C:/Program Files/Ollama/ollama.exe"),
+        ]
+        for candidate in candidates:
+            if candidate.exists():
+                return str(candidate)
+    return None
+
+
+def check_ollama() -> str | None:
+    ollama = find_ollama_binary()
+    if not ollama:
+        return None
+    result = run_command([ollama, "--version"], timeout=10)
+    if result.returncode == 0:
+        print(f"✓ Ollama: {result.stdout.strip()}")
+        return ollama
+    return None
+
+
+def ensure_ollama() -> str:
+    ollama = check_ollama()
+    if ollama:
+        return ollama
+    if platform.system() == "Windows":
+        install_ollama_windows()
+        ollama = check_ollama()
+        if ollama:
+            return ollama
+    raise RuntimeError("Ollama installation failed")
+
+
+def pull_model(ollama_binary: str, model_name: str = DEFAULT_MODEL):
+    print(f"🤖 Pulling model: {model_name}")
+    run_command([ollama_binary, "pull", model_name], check=True)
+    print(f"✓ Model pulled: {model_name}")
 
 
 def create_launcher():
-    """Create a platform-specific launch script."""
-    home = os.path.expanduser("~")
-    project_path = os.path.dirname(os.path.abspath(__file__))
+    home = Path.home()
+    project_path = Path(__file__).resolve().parent
+    platform_tools = LOCAL_PLATFORM_TOOLS_DIR
 
     if platform.system() == "Windows":
-        script_path = os.path.join(home, "llamaphone.bat")
-        content = f'@echo off\ncd /d "{project_path}"\npython llamaphone.py %*\n'
+        script_path = home / "llamaphone.bat"
+        content = (
+            "@echo off\n"
+            f'set "LLAMAPHONE_HOME={project_path}"\n'
+            f'set "LLAMAPHONE_PLATFORM_TOOLS={platform_tools}"\n'
+            'if exist "%LLAMAPHONE_PLATFORM_TOOLS%\\adb.exe" set "PATH=%LLAMAPHONE_PLATFORM_TOOLS%;%PATH%"\n'
+            'cd /d "%LLAMAPHONE_HOME%"\n'
+            "python llamaphone.py %*\n"
+        )
     else:
-        script_path = os.path.join(home, "llamaphone.sh")
-        content = f'#!/bin/bash\ncd "{project_path}"\npython3 llamaphone.py "$@"\n'
+        script_path = home / "llamaphone.sh"
+        content = (
+            "#!/bin/bash\n"
+            f'LLAMAPHONE_HOME="{project_path}"\n'
+            f'LLAMAPHONE_PLATFORM_TOOLS="{platform_tools}"\n'
+            'if [ -x "$LLAMAPHONE_PLATFORM_TOOLS/adb" ]; then\n'
+            '  export PATH="$LLAMAPHONE_PLATFORM_TOOLS:$PATH"\n'
+            "fi\n"
+            'cd "$LLAMAPHONE_HOME"\n'
+            'python3 llamaphone.py "$@"\n'
+        )
 
-    try:
-        with open(script_path, "w") as f:
-            f.write(content)
-        if platform.system() != "Windows":
-            os.chmod(script_path, 0o755)
-        print(f"✓ Launcher created: {script_path}")
-    except Exception as e:
-        print(f"⚠  Could not create launcher: {e}")
+    script_path.write_text(content, encoding="utf-8")
+    if platform.system() != "Windows":
+        os.chmod(script_path, 0o755)
+    print(f"✓ Launcher created: {script_path}")
 
 
 def main():
     print_header()
-    print("Checking requirements...\n")
-
     check_python()
-    check_ollama()
-    check_adb()
 
     try:
-        install_dependencies()
-    except subprocess.CalledProcessError:
-        print("❌ Failed to install dependencies — check your pip/internet connection")
+        install_python_dependencies()
+        ensure_adb()
+        ollama_binary = ensure_ollama()
+        pull_model(ollama_binary, DEFAULT_MODEL)
+        create_launcher()
+    except (subprocess.CalledProcessError, RuntimeError) as error:
+        print(f"\n❌ Onboarding failed: {error}")
         sys.exit(1)
 
-    create_launcher()
-
-    print("\n" + "=" * 44)
-    print("  Setup complete!  Run: python llamaphone.py")
-    print("=" * 44 + "\n")
+    print("\n" + "=" * 52)
+    print(" Setup complete. Start with: python llamaphone.py")
+    print("=" * 52 + "\n")
 
 
 if __name__ == "__main__":
