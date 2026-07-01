@@ -29,7 +29,15 @@ def print_header():
 
 
 def run_command(cmd: list[str], timeout: int | None = None, check: bool = False) -> subprocess.CompletedProcess:
-    return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, check=check)
+    return subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=timeout,
+        check=check,
+    )
 
 
 def run_command_stream(cmd: list[str], label: str, check: bool = False) -> int:
@@ -40,6 +48,8 @@ def run_command_stream(cmd: list[str], label: str, check: bool = False) -> int:
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         bufsize=1,
     )
     if process.stdout is not None:
@@ -173,6 +183,8 @@ def pull_model(ollama_binary: str, model_name: str = DEFAULT_MODEL):
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         bufsize=1,
     )
 

@@ -55,6 +55,8 @@ class ModelPullWorker(QObject):
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 bufsize=1,
             )
             last_line = ""
@@ -1255,7 +1257,14 @@ class MainWindow(QMainWindow):
             if resolved and resolved[0].lower() in {"adb", "fastboot", "ollama"}:
                 tool = resolved[0].lower()
                 resolved[0] = self._resolve_tool_binary(tool) or resolved[0]
-            result = subprocess.run(resolved, capture_output=True, text=True, timeout=timeout)
+            result = subprocess.run(
+                resolved,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=timeout,
+            )
             return result.returncode, result.stdout.strip(), result.stderr.strip()
         except FileNotFoundError:
             tool = command[0].lower() if command else "tool"
