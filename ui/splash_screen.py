@@ -7,7 +7,7 @@ import math
 import os
 
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QBrush, QColor, QFont, QLinearGradient, QPainter, QPen, QPixmap
+from PyQt6.QtGui import QBrush, QColor, QFont, QLinearGradient, QPixmap
 from PyQt6.QtWidgets import QFrame, QLabel, QProgressBar, QVBoxLayout, QWidget
 
 

@@ -3,7 +3,7 @@ LlamaPhone - Terminal Screen
 AI Chat interface with retro terminal styling
 """
 
-from PyQt6.QtCore import QObject, QThread, Qt, pyqtSignal
+from PyQt6.QtCore import QObject, Qt, QThread, pyqtSignal
 from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,

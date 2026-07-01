@@ -87,7 +87,7 @@ python llamaphone.py
 ### Quick Install (Cross-platform)
 
 ```bash
-python setup.py
+python onboarding.py
 python llamaphone.py
 ```
 
@@ -119,7 +119,7 @@ git clone https://github.com/sonamcgoo-dev/llamaphone.git
 cd llamaphone
 
 # Full onboarding first
-python setup.py
+python onboarding.py
 
 # Run
 python llamaphone.py
@@ -196,6 +196,8 @@ AI:  Bootloader Unlock Guide for Samsung:
 ```
 llamaphone/
 ├── llamaphone.py          # Main entry point
+├── onboarding.py          # Full onboarding (deps + tools + model pull)
+├── setup.py               # Packaging metadata entry point
 ├── llamaphone.spec        # PyInstaller spec
 ├── build.bat              # Windows build script
 ├── build.sh              # Linux/macOS build script

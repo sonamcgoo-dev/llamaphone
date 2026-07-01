@@ -18,7 +18,7 @@ if errorlevel 1 (
 )
 
 REM Run full onboarding (deps + adb + ollama + model pull + launcher)
-python setup.py
+python onboarding.py
 if errorlevel 1 (
     echo ERROR: Onboarding failed.
     pause

@@ -3,11 +3,14 @@ LlamaPhone - Main Window
 Retro CRT TV-styled main application window
 """
 
+import os
+import re
 import shlex
 import socket
 import subprocess
+from pathlib import Path
 
-from PyQt6.QtCore import QTimer, pyqtSignal
+from PyQt6.QtCore import QObject, QThread, QTimer, pyqtSignal
 from PyQt6.QtGui import QAction, QColor, QPainter, QPen
 from PyQt6.QtWidgets import (
     QApplication,
@@ -32,6 +35,46 @@ from .styles import get_crt_stylesheet
 from .terminal_screen import TerminalScreen
 
 
+class ModelPullWorker(QObject):
+    """Background worker that pulls an Ollama model and reports progress."""
+
+    progress = pyqtSignal(str, int)
+    finished = pyqtSignal(bool, str)
+
+    def __init__(self, ollama_binary: str, model_name: str):
+        super().__init__()
+        self.ollama_binary = ollama_binary
+        self.model_name = model_name
+
+    def run(self):
+        try:
+            process = subprocess.Popen(
+                [self.ollama_binary, "pull", self.model_name],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,
+            )
+            last_line = ""
+            if process.stdout is not None:
+                for line in process.stdout:
+                    text = line.strip()
+                    if not text:
+                        continue
+                    last_line = text
+                    match = re.search(r"(\d+)%", text)
+                    percent = int(match.group(1)) if match else -1
+                    self.progress.emit(text, percent)
+
+            return_code = process.wait()
+            if return_code != 0:
+                self.finished.emit(False, last_line or f"Model pull failed ({return_code})")
+                return
+            self.finished.emit(True, f"Model ready: {self.model_name}")
+        except Exception as error:
+            self.finished.emit(False, str(error))
+
+
 class MainWindow(QMainWindow):
     """Main window styled as a retro CRT TV."""
 
@@ -44,6 +87,9 @@ class MainWindow(QMainWindow):
         self.current_device = None
         self.ai_ready = False
         self.adb_connected = False
+        self.model_pull_thread: QThread | None = None
+        self.model_pull_worker: ModelPullWorker | None = None
+        self._model_pull_last_percent = -1
         self._bootloader_actions: dict[str, QPushButton] = {}
         self._root_method_buttons: dict[str, QPushButton] = {}
 
@@ -700,18 +746,33 @@ class MainWindow(QMainWindow):
         ai_layout.addWidget(QLabel("Ollama Model:"))
         self.model_combo = QComboBox()
         self.model_combo.addItems([
-            "qwen2.5-coder-7b-instruct",
+            "qwen2.5-coder:7b",
             "codellama:7b",
             "mistral:7b",
             "llama3:8b",
             "phi3:14b",
         ])
+        self.model_combo.currentTextChanged.connect(self.on_model_selection_changed)
         ai_layout.addWidget(self.model_combo)
 
         self.ai_enabled_check = QPushButton("✓ AI Enabled")
         self.ai_enabled_check.setCheckable(True)
         self.ai_enabled_check.setChecked(True)
         ai_layout.addWidget(self.ai_enabled_check)
+
+        self.model_download_btn = QPushButton("⬇ Pull Selected Model")
+        self.model_download_btn.clicked.connect(self.start_model_download)
+        ai_layout.addWidget(self.model_download_btn)
+
+        self.model_download_status = QLabel("Model pull idle.")
+        self.model_download_status.setStyleSheet("color: #33FF33;")
+        ai_layout.addWidget(self.model_download_status)
+
+        self.model_download_progress = QProgressBar()
+        self.model_download_progress.setRange(0, 100)
+        self.model_download_progress.setValue(0)
+        self.model_download_progress.setFormat("%p%")
+        ai_layout.addWidget(self.model_download_progress)
 
         ai_group.setLayout(ai_layout)
         layout.addWidget(ai_group)
@@ -723,7 +784,7 @@ class MainWindow(QMainWindow):
         adb_layout.addWidget(QLabel("ADB Path:"))
         adb_path_layout = QHBoxLayout()
         self.adb_path_input = QLineEdit()
-        self.adb_path_input.setText("/usr/bin/adb")
+        self.adb_path_input.setText(self._resolve_tool_binary("adb") or "adb")
         browse_adb = QPushButton("Browse")
         browse_adb.clicked.connect(self.browse_adb_path)
         adb_path_layout.addWidget(self.adb_path_input)
@@ -772,14 +833,17 @@ class MainWindow(QMainWindow):
 
         new_action = QAction("New Session", self)
         new_action.setShortcut("Ctrl+N")
+        new_action.triggered.connect(self.new_terminal_session)
         file_menu.addAction(new_action)
 
         open_action = QAction("Open Script...", self)
         open_action.setShortcut("Ctrl+O")
+        open_action.triggered.connect(self.open_artifact_file)
         file_menu.addAction(open_action)
 
         save_action = QAction("Save Script...", self)
         save_action.setShortcut("Ctrl+S")
+        save_action.triggered.connect(self.save_terminal_log)
         file_menu.addAction(save_action)
 
         file_menu.addSeparator()
@@ -825,6 +889,7 @@ class MainWindow(QMainWindow):
 
         generate_action = QAction("Generate Script", self)
         generate_action.setShortcut("Ctrl+G")
+        generate_action.triggered.connect(self.switch_to_terminal)
         ai_menu.addAction(generate_action)
 
         ai_menu.addSeparator()
@@ -837,6 +902,7 @@ class MainWindow(QMainWindow):
         help_menu = menubar.addMenu("❓ Help")
 
         docs_action = QAction("Documentation", self)
+        docs_action.triggered.connect(self.open_documentation)
         help_menu.addAction(docs_action)
 
         about_action = QAction("About LlamaPhone", self)
@@ -870,9 +936,9 @@ class MainWindow(QMainWindow):
         statusbar.addPermanentWidget(QLabel(" | "))
 
         # Model info
-        model_label = QLabel("Model: qwen2.5-coder-7b")
-        model_label.setStyleSheet("color: #666666; padding: 0 10px;")
-        statusbar.addPermanentWidget(model_label)
+        self.model_status_label = QLabel("Model: qwen2.5-coder:7b")
+        self.model_status_label.setStyleSheet("color: #666666; padding: 0 10px;")
+        statusbar.addPermanentWidget(self.model_status_label)
 
         # Version
         version_label = QLabel("v1.0.0")
@@ -919,6 +985,167 @@ class MainWindow(QMainWindow):
         )
         self.screen_tabs.setCurrentIndex(0)  # Switch to terminal
 
+    def _resolve_tool_binary(self, tool_name: str) -> str | None:
+        """Resolve tool binary from user setting, bundled platform-tools, or PATH."""
+        if tool_name == "adb":
+            configured = self.adb_path_input.text().strip() if hasattr(self, "adb_path_input") else ""
+            if configured and Path(configured).exists():
+                return configured
+
+        platform_tools_candidates = [
+            Path.home() / ".llamaphone" / "platform-tools",
+            Path(os.environ.get("LLAMAPHONE_PLATFORM_TOOLS", "")),
+        ]
+        exe_name = f"{tool_name}.exe" if os.name == "nt" else tool_name
+        for folder in platform_tools_candidates:
+            if not folder:
+                continue
+            candidate = folder / exe_name
+            if candidate.exists():
+                return str(candidate)
+        return None
+
+    def on_model_selection_changed(self, model_name: str):
+        """Reflect model selection in status bar immediately."""
+        if hasattr(self, "model_status_label"):
+            self.model_status_label.setText(f"Model: {model_name}")
+
+    def start_model_download(self):
+        """Pull the selected Ollama model with visible progress."""
+        if self.model_pull_thread is not None and self.model_pull_thread.isRunning():
+            self.model_download_status.setText("Model pull already running...")
+            return
+
+        model_name = self.model_combo.currentText().strip()
+        ollama_binary = self._resolve_tool_binary("ollama") or "ollama"
+        self.model_download_progress.setValue(0)
+        self.model_download_status.setText(f"Starting model pull: {model_name}")
+        self._model_pull_last_percent = -1
+        self.model_download_btn.setEnabled(False)
+
+        self.model_pull_thread = QThread(self)
+        self.model_pull_worker = ModelPullWorker(ollama_binary, model_name)
+        self.model_pull_worker.moveToThread(self.model_pull_thread)
+        self.model_pull_thread.started.connect(self.model_pull_worker.run)
+        self.model_pull_worker.progress.connect(self.on_model_pull_progress)
+        self.model_pull_worker.finished.connect(self.on_model_pull_finished)
+        self.model_pull_worker.finished.connect(self.model_pull_thread.quit)
+        self.model_pull_thread.finished.connect(self.model_pull_thread.deleteLater)
+        self.model_pull_thread.finished.connect(self.on_model_pull_thread_finished)
+        self.model_pull_thread.start()
+
+    def on_model_pull_progress(self, status_line: str, percent: int):
+        """Update model pull status and progress indicator."""
+        self.model_download_status.setText(status_line)
+        if percent >= 0:
+            self.model_download_progress.setValue(percent)
+            if percent != self._model_pull_last_percent and percent % 10 == 0:
+                self.terminal_screen.append_message(
+                    "Startup",
+                    f"Model pull progress: {percent}%",
+                    is_ai=True,
+                )
+                self._model_pull_last_percent = percent
+
+    def on_model_pull_finished(self, success: bool, message: str):
+        """Handle model pull completion."""
+        self.model_download_btn.setEnabled(True)
+        if success:
+            self.model_download_progress.setValue(100)
+            self.model_download_status.setText(message)
+            self.terminal_screen.append_message("Startup", message, is_ai=True)
+        else:
+            self.model_download_status.setText(f"Model pull failed: {message}")
+            self.terminal_screen.append_message("Startup", f"Model pull failed: {message}", is_ai=True)
+
+    def on_model_pull_thread_finished(self):
+        """Reset worker/thread references after model pull."""
+        self.model_pull_worker = None
+        self.model_pull_thread = None
+
+    def switch_to_terminal(self):
+        """Switch view to AI terminal tab."""
+        self.screen_tabs.setCurrentIndex(0)
+
+    def new_terminal_session(self):
+        """Start a fresh terminal chat session."""
+        self.terminal_screen.messages.clear()
+        while self.terminal_screen.chat_layout.count():
+            item = self.terminal_screen.chat_layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
+        self.terminal_screen.append_message(
+            "LlamaPhone AI",
+            "New session started. Describe the repair task you want to run.",
+            is_ai=True,
+        )
+        self.switch_to_terminal()
+
+    def open_artifact_file(self):
+        """Open a script, firmware image, or photo into the active workflow."""
+        from PyQt6.QtWidgets import QFileDialog
+
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Open File",
+            "",
+            "Supported Files (*.txt *.log *.sh *.bat *.py *.img *.bin *.zip *.tar *.md5 *.png *.jpg *.jpeg *.webp *.bmp);;All Files (*)",
+        )
+        if not file_path:
+            return
+
+        lower_path = file_path.lower()
+        if lower_path.endswith((".img", ".bin", ".zip", ".tar", ".md5")):
+            self.flash_file_input.setText(file_path)
+            self.fw_input.setText(file_path)
+            self.screen_tabs.setCurrentIndex(6)
+            self.terminal_screen.append_message("System", f"Loaded firmware/image: {file_path}", is_ai=True)
+            return
+
+        if lower_path.endswith((".png", ".jpg", ".jpeg", ".webp", ".bmp")):
+            self.flash_file_input.setText(file_path)
+            self.screen_tabs.setCurrentIndex(4)
+            self.terminal_screen.append_message("System", f"Loaded photo/image: {file_path}", is_ai=True)
+            return
+
+        try:
+            text = Path(file_path).read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            text = Path(file_path).read_text(encoding="latin-1")
+        self.adb_output.setPlainText(text)
+        self.screen_tabs.setCurrentIndex(3)
+        self.terminal_screen.append_message("System", f"Opened text file: {file_path}", is_ai=True)
+
+    def save_terminal_log(self):
+        """Save terminal and command output to a text log."""
+        from PyQt6.QtWidgets import QFileDialog
+
+        target, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save Session Log",
+            "llamaphone-session.log",
+            "Log Files (*.log *.txt);;All Files (*)",
+        )
+        if not target:
+            return
+
+        lines = []
+        for sender, message, _is_ai in self.terminal_screen.messages:
+            lines.append(f"[{sender}] {message}")
+        lines.append("\n=== ADB OUTPUT ===\n")
+        lines.append(self.adb_output.toPlainText())
+        Path(target).write_text("\n".join(lines), encoding="utf-8")
+        self.terminal_screen.append_message("System", f"Saved session log: {target}", is_ai=True)
+
+    def open_documentation(self):
+        """Open README in the default browser."""
+        import webbrowser
+
+        readme_path = Path(__file__).resolve().parent.parent / "README.md"
+        if readme_path.exists():
+            webbrowser.open(readme_path.as_uri())
+
     def report_runtime_status(self):
         """Show dependency/model availability in the terminal at startup."""
         checks = [
@@ -946,7 +1173,10 @@ class MainWindow(QMainWindow):
 
     def _run_cli(self, command: list[str], timeout: int = 30) -> tuple[int, str, str]:
         """Run a CLI command and return (returncode, stdout, stderr)."""
-        result = subprocess.run(command, capture_output=True, text=True, timeout=timeout)
+        resolved = list(command)
+        if resolved and resolved[0].lower() in {"adb", "fastboot", "ollama"}:
+            resolved[0] = self._resolve_tool_binary(resolved[0]) or resolved[0]
+        result = subprocess.run(resolved, capture_output=True, text=True, timeout=timeout)
         return result.returncode, result.stdout.strip(), result.stderr.strip()
 
     def scan_devices(self):
@@ -990,7 +1220,7 @@ class MainWindow(QMainWindow):
                 self.device_list.append("Enter an IP in the Port Scanner field first.")
                 return
             target = ip if ":" in ip else f"{ip}:5555"
-            return_code, output, error = self._run_cli(["adb", "connect", target], timeout=20)
+            _return_code, output, error = self._run_cli(["adb", "connect", target], timeout=20)
             self.device_list.append(output or error or f"Connection attempt finished for {target}")
         else:
             self.device_list.append("Checking USB-connected devices...")

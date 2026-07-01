@@ -10,10 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Replaced placeholder UI actions with live ADB/Fastboot execution paths and real Ollama chat requests
-- Expanded onboarding (`setup.py` / `install.bat`) to install dependencies, provision ADB on Windows, install Ollama on Windows, and pull `qwen2.5-coder:7b`
+- Expanded onboarding (`onboarding.py` / `install.bat`) to install dependencies, provision ADB on Windows, install Ollama on Windows, and pull `qwen2.5-coder:7b`
 - Added live onboarding command output and visible model pull progress lines so dependency/model download activity is clearly shown
 - Updated splash/loading visuals and application branding assets (window icon, taskbar/desktop icon, splash logo)
 - Hardened Windows packaging so Python/runtime dependencies plus UI assets/modules are consistently included in PyInstaller builds
+- Split onboarding into `onboarding.py` and restored `setup.py` to setuptools packaging to prevent pip/install breakages
+- Added in-app model pull controls with progress/status indicators in Settings and wired core File/AI/Help actions
 
 ## [1.0.0] - 2024-06-30
 
