@@ -5,7 +5,7 @@ color 0A
 
 echo ========================================
 echo    LlamaPhone Build Script
-echo    Packages app into a standalone .exe
+echo    Packages app into a reliable onedir build
 echo ========================================
 echo.
 
@@ -44,7 +44,7 @@ if errorlevel 1 (
 echo.
 
 REM Build using the spec file (includes hidden imports, data files, and icon)
-echo Building LlamaPhone.exe...
+echo Building LlamaPhone package...
 echo.
 python -m PyInstaller llamaphone.spec --noconfirm --clean
 
@@ -57,7 +57,7 @@ if errorlevel 1 (
 echo.
 echo ========================================
 echo    Build Complete!
-echo    Output: dist\LlamaPhone.exe
+echo    Output: dist\LlamaPhone\LlamaPhone.exe
 echo ========================================
 echo.
 

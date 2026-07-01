@@ -2,10 +2,10 @@
 """
 LlamaPhone - PyInstaller Build Specification
 ============================================
-SINGLE-FILE executable for Windows.
+ONE-DIR executable for Windows (more reliable than onefile on locked-down PCs).
 
 Usage:
-    pyinstaller --onefile llamaphone.spec
+    pyinstaller llamaphone.spec
     Or just double-click build.bat
 """
 
@@ -103,12 +103,12 @@ a = Analysis(
 # Create the PYZ archive
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
-# Create SINGLE-FILE executable
+# Create executable (collected into dist\LlamaPhone\)
 exe = EXE(
     pyz,
     a.scripts,
     [],
-    exclude_binaries=False,
+    exclude_binaries=True,
     name="LlamaPhone",
     debug=False,
     bootloader_ignore_signals=False,
@@ -122,4 +122,15 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon=icon_path,
+)
+
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    name="LlamaPhone",
 )

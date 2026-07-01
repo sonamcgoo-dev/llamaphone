@@ -109,7 +109,7 @@ Simply download `LlamaPhone_Setup_1.0.0.exe` and run it!
 | Method | Description |
 |--------|-------------|
 | **GitHub Actions** | Push tag → auto-builds .exe + installer |
-| **Build Script** | Run `build.bat` locally (packs Python runtime dependencies and bundled assets into `dist\LlamaPhone.exe`) |
+| **Build Script** | Run `build.bat` locally (packs Python runtime dependencies and bundled assets into `dist\LlamaPhone\`) |
 
 ### Build from Source
 
@@ -131,7 +131,7 @@ build.bat
 ### GitHub Actions Auto-Build
 
 Every release automatically creates:
-- `dist\LlamaPhone.exe` - Portable executable
+- `dist\LlamaPhone\LlamaPhone.exe` - Portable executable (with bundled runtime files)
 - `installer\LlamaPhone_Setup_X.X.X.exe` - Windows installer
 
 **To trigger a build:**

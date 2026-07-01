@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Hardened Windows packaging so Python/runtime dependencies plus UI assets/modules are consistently included in PyInstaller builds
 - Split onboarding into `onboarding.py` and restored `setup.py` to setuptools packaging to prevent pip/install breakages
 - Added in-app model pull controls with progress/status indicators in Settings and wired core File/AI/Help actions
+- Switched Windows packaging from onefile to onedir to avoid Python DLL extraction/load failures on some PCs
 
 ## [1.0.0] - 2024-06-30
 
