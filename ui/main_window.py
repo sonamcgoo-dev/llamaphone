@@ -6,8 +6,10 @@ Retro CRT TV-styled main application window
 import os
 import re
 import shlex
+import shutil
 import socket
 import subprocess
+import time
 from pathlib import Path
 
 from PyQt6.QtCore import QObject, QThread, QTimer, pyqtSignal
@@ -986,7 +988,7 @@ class MainWindow(QMainWindow):
         self.screen_tabs.setCurrentIndex(0)  # Switch to terminal
 
     def _resolve_tool_binary(self, tool_name: str) -> str | None:
-        """Resolve tool binary from user setting, bundled platform-tools, or PATH."""
+        """Resolve tool binary from user setting, bundled tools, known locations, or PATH."""
         if tool_name == "adb":
             configured = self.adb_path_input.text().strip() if hasattr(self, "adb_path_input") else ""
             if configured and Path(configured).exists():
@@ -1003,6 +1005,20 @@ class MainWindow(QMainWindow):
             candidate = folder / exe_name
             if candidate.exists():
                 return str(candidate)
+
+        if os.name == "nt" and tool_name == "ollama":
+            ollama_candidates = [
+                Path.home() / "AppData" / "Local" / "Programs" / "Ollama" / "ollama.exe",
+                Path("C:/Program Files/Ollama/ollama.exe"),
+            ]
+            for candidate in ollama_candidates:
+                if candidate.exists():
+                    return str(candidate)
+
+        from_path = shutil.which(tool_name)
+        if from_path:
+            return from_path
+
         return None
 
     def on_model_selection_changed(self, model_name: str):
@@ -1017,7 +1033,19 @@ class MainWindow(QMainWindow):
             return
 
         model_name = self.model_combo.currentText().strip()
-        ollama_binary = self._resolve_tool_binary("ollama") or "ollama"
+        ollama_binary = self._resolve_tool_binary("ollama")
+        if not ollama_binary:
+            message = "Ollama binary not found. Install Ollama first."
+            self.model_download_status.setText(message)
+            self.terminal_screen.append_message("Startup", message, is_ai=True)
+            return
+
+        service_ready, service_message = self._ensure_ollama_service(ollama_binary)
+        if not service_ready:
+            self.model_download_status.setText(service_message)
+            self.terminal_screen.append_message("Startup", service_message, is_ai=True)
+            return
+
         self.model_download_progress.setValue(0)
         self.model_download_status.setText(f"Starting model pull: {model_name}")
         self._model_pull_last_percent = -1
@@ -1033,6 +1061,38 @@ class MainWindow(QMainWindow):
         self.model_pull_thread.finished.connect(self.model_pull_thread.deleteLater)
         self.model_pull_thread.finished.connect(self.on_model_pull_thread_finished)
         self.model_pull_thread.start()
+
+    def _ensure_ollama_service(self, ollama_binary: str) -> tuple[bool, str]:
+        """Ensure the Ollama API is reachable before pulling models."""
+        list_code, _list_out, list_err = self._run_cli([ollama_binary, "list"], timeout=10)
+        if list_code == 0:
+            return True, "Ollama ready."
+
+        try:
+            if os.name == "nt":
+                subprocess.Popen(
+                    [ollama_binary, "serve"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    creationflags=0x00000008 | 0x00000200,  # DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP
+                )
+            else:
+                subprocess.Popen(
+                    [ollama_binary, "serve"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+        except Exception as error:
+            return False, f"Could not start Ollama service: {error}"
+
+        for _ in range(15):
+            time.sleep(1)
+            ready_code, _ready_out, _ready_err = self._run_cli([ollama_binary, "list"], timeout=10)
+            if ready_code == 0:
+                return True, "Ollama service started."
+
+        reason = list_err or "Ollama service did not become ready."
+        return False, f"Ollama unavailable: {reason}"
 
     def on_model_pull_progress(self, status_line: str, percent: int):
         """Update model pull status and progress indicator."""
