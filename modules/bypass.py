@@ -50,7 +50,9 @@ class BypassModule:
         result = subprocess.run(
             [self.adb_path] + args,
             capture_output=True,
-            text=True
+            text=True,
+            encoding="utf-8",
+            errors="replace",
         )
 
         android_id = result.stdout.strip() if result.returncode == 0 else None

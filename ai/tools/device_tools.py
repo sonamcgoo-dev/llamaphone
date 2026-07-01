@@ -148,13 +148,17 @@ class DeviceDiscoveryTools:
                 result = subprocess.run(
                     ["ipconfig"],
                     capture_output=True,
-                    text=True
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
                 )
             else:
                 result = subprocess.run(
                     ["ip", "addr", "show"],
                     capture_output=True,
-                    text=True
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
                 )
             info["interfaces"].append(result.stdout)
         except Exception:
@@ -169,7 +173,14 @@ class DeviceDiscoveryTools:
                 cmd = ["ping", "-n", str(count), "-w", "1000", ip]
             else:
                 cmd = ["ping", "-c", str(count), "-W", "1", ip]
-            result = subprocess.run(cmd, capture_output=True, timeout=5)
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=5,
+            )
             return result.returncode == 0
         except Exception:
             return False
@@ -184,6 +195,8 @@ class DeviceDiscoveryTools:
                 ["adb", "mdns", "check"],
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 timeout=5
             )
             # Parse output if any
