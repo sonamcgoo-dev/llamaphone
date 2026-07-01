@@ -993,6 +993,12 @@ class MainWindow(QMainWindow):
             configured = self.adb_path_input.text().strip() if hasattr(self, "adb_path_input") else ""
             if configured and Path(configured).exists():
                 return configured
+        elif tool_name == "fastboot":
+            configured = self.adb_path_input.text().strip() if hasattr(self, "adb_path_input") else ""
+            if configured and Path(configured).exists():
+                sibling = Path(configured).with_name("fastboot.exe" if os.name == "nt" else "fastboot")
+                if sibling.exists():
+                    return str(sibling)
 
         platform_tools_candidates = [
             Path.home() / ".llamaphone" / "platform-tools",
@@ -1020,6 +1026,17 @@ class MainWindow(QMainWindow):
             return from_path
 
         return None
+
+    def _missing_tool_hint(self, tool_name: str) -> str:
+        """Human-readable guidance when required CLI tools are missing."""
+        if tool_name == "ollama":
+            return "Ollama is not installed or not on PATH. Install/start Ollama, then retry."
+        if tool_name in {"adb", "fastboot"}:
+            return (
+                f"{tool_name.upper()} is not installed or not on PATH. "
+                "Run onboarding.py (or install.bat) to install Android platform-tools."
+            )
+        return f"{tool_name} is not installed or not on PATH."
 
     def on_model_selection_changed(self, model_name: str):
         """Reflect model selection in status bar immediately."""
@@ -1233,11 +1250,18 @@ class MainWindow(QMainWindow):
 
     def _run_cli(self, command: list[str], timeout: int = 30) -> tuple[int, str, str]:
         """Run a CLI command and return (returncode, stdout, stderr)."""
-        resolved = list(command)
-        if resolved and resolved[0].lower() in {"adb", "fastboot", "ollama"}:
-            resolved[0] = self._resolve_tool_binary(resolved[0]) or resolved[0]
-        result = subprocess.run(resolved, capture_output=True, text=True, timeout=timeout)
-        return result.returncode, result.stdout.strip(), result.stderr.strip()
+        try:
+            resolved = list(command)
+            if resolved and resolved[0].lower() in {"adb", "fastboot", "ollama"}:
+                tool = resolved[0].lower()
+                resolved[0] = self._resolve_tool_binary(tool) or resolved[0]
+            result = subprocess.run(resolved, capture_output=True, text=True, timeout=timeout)
+            return result.returncode, result.stdout.strip(), result.stderr.strip()
+        except FileNotFoundError:
+            tool = command[0].lower() if command else "tool"
+            return 127, "", self._missing_tool_hint(tool)
+        except subprocess.SubprocessError as error:
+            return 1, "", str(error)
 
     def scan_devices(self):
         """Scan for connected devices."""
