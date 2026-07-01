@@ -3,12 +3,14 @@ LlamaPhone - Main Window
 Retro CRT TV-styled main application window
 """
 
+import contextlib
 import os
 import re
 import shlex
 import shutil
 import socket
 import subprocess
+import tempfile
 import time
 from pathlib import Path
 
@@ -79,6 +81,59 @@ class ModelPullWorker(QObject):
             self.finished.emit(False, str(error))
 
 
+class LocalModelImportWorker(QObject):
+    """Background worker that imports a local model file into Ollama."""
+
+    progress = pyqtSignal(str)
+    finished = pyqtSignal(bool, str)
+
+    def __init__(self, ollama_binary: str, model_name: str, source_path: str):
+        super().__init__()
+        self.ollama_binary = ollama_binary
+        self.model_name = model_name
+        self.source_path = source_path
+
+    def run(self):
+        modelfile_path = None
+        try:
+            safe_path = self.source_path.replace("\\", "/")
+            modelfile_content = f'FROM "{safe_path}"\n'
+            with tempfile.NamedTemporaryFile("w", encoding="utf-8", delete=False, suffix=".Modelfile") as handle:
+                handle.write(modelfile_content)
+                modelfile_path = handle.name
+
+            self.progress.emit(f"Importing local model: {self.source_path}")
+            process = subprocess.Popen(
+                [self.ollama_binary, "create", self.model_name, "-f", modelfile_path],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                bufsize=1,
+            )
+            last_line = ""
+            if process.stdout is not None:
+                for line in process.stdout:
+                    text = line.strip()
+                    if text:
+                        last_line = text
+                        self.progress.emit(text)
+
+            return_code = process.wait()
+            if return_code != 0:
+                self.finished.emit(False, last_line or f"Local model import failed ({return_code})")
+                return
+
+            self.finished.emit(True, f"Local model imported as {self.model_name}")
+        except Exception as error:
+            self.finished.emit(False, str(error))
+        finally:
+            if modelfile_path:
+                with contextlib.suppress(Exception):
+                    os.remove(modelfile_path)
+
+
 class MainWindow(QMainWindow):
     """Main window styled as a retro CRT TV."""
 
@@ -94,6 +149,8 @@ class MainWindow(QMainWindow):
         self.model_pull_thread: QThread | None = None
         self.model_pull_worker: ModelPullWorker | None = None
         self._model_pull_last_percent = -1
+        self.local_model_thread: QThread | None = None
+        self.local_model_worker: LocalModelImportWorker | None = None
         self._bootloader_actions: dict[str, QPushButton] = {}
         self._root_method_buttons: dict[str, QPushButton] = {}
 
@@ -1142,6 +1199,67 @@ class MainWindow(QMainWindow):
         self.model_pull_worker = None
         self.model_pull_thread = None
 
+    def _default_local_model_source(self) -> Path:
+        """Default startup source file to import as model when missing."""
+        return Path.home() / "Downloads" / "model.safetensors"
+
+    def start_local_model_import(self, model_name: str, source_path: Path):
+        """Import a local model file into Ollama in background."""
+        if self.local_model_thread is not None and self.local_model_thread.isRunning():
+            return
+
+        ollama_binary = self._resolve_tool_binary("ollama")
+        if not ollama_binary:
+            self.terminal_screen.append_message(
+                "Startup",
+                "Local model found, but Ollama binary is missing.",
+                is_ai=True,
+            )
+            return
+
+        service_ready, service_message = self._ensure_ollama_service(ollama_binary)
+        if not service_ready:
+            self.terminal_screen.append_message("Startup", service_message, is_ai=True)
+            return
+
+        self.model_download_status.setText(f"Importing local model: {source_path.name}")
+        self.model_download_progress.setValue(0)
+        self.model_download_btn.setEnabled(False)
+
+        self.local_model_thread = QThread(self)
+        self.local_model_worker = LocalModelImportWorker(ollama_binary, model_name, str(source_path))
+        self.local_model_worker.moveToThread(self.local_model_thread)
+        self.local_model_thread.started.connect(self.local_model_worker.run)
+        self.local_model_worker.progress.connect(self.on_local_model_import_progress)
+        self.local_model_worker.finished.connect(self.on_local_model_import_finished)
+        self.local_model_worker.finished.connect(self.local_model_thread.quit)
+        self.local_model_thread.finished.connect(self.local_model_thread.deleteLater)
+        self.local_model_thread.finished.connect(self.on_local_model_import_thread_finished)
+        self.local_model_thread.start()
+
+    def on_local_model_import_progress(self, status_line: str):
+        """Update local model import status output."""
+        self.model_download_status.setText(status_line)
+        self.terminal_screen.append_message("Startup", status_line, is_ai=True)
+
+    def on_local_model_import_finished(self, success: bool, message: str):
+        """Handle local model import completion."""
+        self.model_download_btn.setEnabled(True)
+        if success:
+            self.model_download_progress.setValue(100)
+            self.model_download_status.setText(message)
+            self.terminal_screen.append_message("Startup", message, is_ai=True)
+            if hasattr(self, "model_status_label"):
+                self.model_status_label.setText("Model: qwen2.5-coder:7b")
+        else:
+            self.model_download_status.setText(f"Local import failed: {message}")
+            self.terminal_screen.append_message("Startup", f"Local import failed: {message}", is_ai=True)
+
+    def on_local_model_import_thread_finished(self):
+        """Reset worker/thread references after local model import."""
+        self.local_model_worker = None
+        self.local_model_thread = None
+
     def switch_to_terminal(self):
         """Switch view to AI terminal tab."""
         self.screen_tabs.setCurrentIndex(0)
@@ -1247,6 +1365,14 @@ class MainWindow(QMainWindow):
                 self.terminal_screen.append_message("Startup", "Model qwen2.5-coder:7b: ready", is_ai=True)
             else:
                 self.terminal_screen.append_message("Startup", "Model qwen2.5-coder:7b: not found", is_ai=True)
+                local_source = self._default_local_model_source()
+                if local_source.exists():
+                    self.terminal_screen.append_message(
+                        "Startup",
+                        f"Found local model source: {local_source}. Importing on startup...",
+                        is_ai=True,
+                    )
+                    self.start_local_model_import("qwen2.5-coder:7b", local_source)
         except Exception:
             self.terminal_screen.append_message("Startup", "Model check skipped (Ollama unavailable)", is_ai=True)
 
