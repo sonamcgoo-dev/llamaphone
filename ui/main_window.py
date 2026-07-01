@@ -1107,8 +1107,21 @@ class MainWindow(QMainWindow):
         if self.model_pull_thread is not None and self.model_pull_thread.isRunning():
             self.model_download_status.setText("Model pull already running...")
             return
+        if self.local_model_thread is not None and self.local_model_thread.isRunning():
+            self.model_download_status.setText("Local model import already running...")
+            return
 
         model_name = self.model_combo.currentText().strip()
+        local_source = self._default_local_model_source()
+        if local_source.exists():
+            self.terminal_screen.append_message(
+                "Startup",
+                f"Importing local model source for {model_name}: {local_source}",
+                is_ai=True,
+            )
+            self.start_local_model_import(model_name, local_source)
+            return
+
         ollama_binary = self._resolve_tool_binary("ollama")
         if not ollama_binary:
             message = "Ollama binary not found. Install Ollama first."
@@ -1240,7 +1253,6 @@ class MainWindow(QMainWindow):
     def on_local_model_import_progress(self, status_line: str):
         """Update local model import status output."""
         self.model_download_status.setText(status_line)
-        self.terminal_screen.append_message("Startup", status_line, is_ai=True)
 
     def on_local_model_import_finished(self, success: bool, message: str):
         """Handle local model import completion."""
@@ -1365,14 +1377,6 @@ class MainWindow(QMainWindow):
                 self.terminal_screen.append_message("Startup", "Model qwen2.5-coder:7b: ready", is_ai=True)
             else:
                 self.terminal_screen.append_message("Startup", "Model qwen2.5-coder:7b: not found", is_ai=True)
-                local_source = self._default_local_model_source()
-                if local_source.exists():
-                    self.terminal_screen.append_message(
-                        "Startup",
-                        f"Found local model source: {local_source}. Importing on startup...",
-                        is_ai=True,
-                    )
-                    self.start_local_model_import("qwen2.5-coder:7b", local_source)
         except Exception:
             self.terminal_screen.append_message("Startup", "Model check skipped (Ollama unavailable)", is_ai=True)
 
