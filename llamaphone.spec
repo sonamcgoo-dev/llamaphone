@@ -10,7 +10,7 @@ Usage:
 """
 
 from pathlib import Path
-from PyInstaller.utils.hooks import collect_submodules
+from PyInstaller.utils.hooks import collect_all, collect_submodules
 
 block_cipher = None
 
@@ -39,6 +39,22 @@ hiddenimports += collect_submodules("ai")
 hiddenimports += collect_submodules("modules")
 hiddenimports += collect_submodules("core")
 
+# Data files and binaries to include
+datas = [
+    (str(ROOT_DIR / "data"), "data"),
+]
+binaries = []
+
+for package_name in ("PyQt6", "httpx", "httpcore", "anyio", "sniffio", "idna", "certifi", "h11"):
+    pkg_datas, pkg_binaries, pkg_hiddenimports = collect_all(package_name)
+    datas.extend(pkg_datas)
+    binaries.extend(pkg_binaries)
+    hiddenimports.extend(pkg_hiddenimports)
+
+datas = list(dict.fromkeys(datas))
+binaries = list(dict.fromkeys(binaries))
+hiddenimports = sorted(set(hiddenimports))
+
 # Exclude patterns
 excludes = [
     "matplotlib",
@@ -49,11 +65,6 @@ excludes = [
     "tkinter",
     "test",
     "unittest",
-]
-
-# Data files to include
-datas = [
-    (str(ROOT_DIR / "data"), "data"),
 ]
 
 assets_dir = ROOT_DIR / "assets"
@@ -76,7 +87,7 @@ for loc in icon_locations:
 a = Analysis(
     [main_script],
     pathex=[str(ROOT_DIR)],
-    binaries=[],
+    binaries=binaries,
     datas=datas,
     hiddenimports=hiddenimports,
     hookspath=[],

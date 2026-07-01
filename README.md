@@ -91,6 +91,8 @@ python setup.py
 python llamaphone.py
 ```
 
+Onboarding now prints live install output and **model download progress lines** during `ollama pull`, so you can see that dependency setup and model download are actively running.
+
 ---
 
 ## Downloads
@@ -107,7 +109,7 @@ Simply download `LlamaPhone_Setup_1.0.0.exe` and run it!
 | Method | Description |
 |--------|-------------|
 | **GitHub Actions** | Push tag → auto-builds .exe + installer |
-| **Build Script** | Run `build.bat` locally |
+| **Build Script** | Run `build.bat` locally (packs Python runtime dependencies and bundled assets into `dist\LlamaPhone.exe`) |
 
 ### Build from Source
 

@@ -9,6 +9,7 @@ import platform
 import shutil
 import subprocess
 import sys
+import time
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -30,6 +31,28 @@ def run_command(cmd: list[str], timeout: int | None = None, check: bool = False)
     return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, check=check)
 
 
+def run_command_stream(cmd: list[str], label: str, check: bool = False) -> int:
+    """Run command and stream output lines with a label."""
+    print(f"\n▶ {label}")
+    process = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,
+    )
+    if process.stdout is not None:
+        for line in process.stdout:
+            text = line.rstrip()
+            if text:
+                print(f"   {text}")
+
+    return_code = process.wait()
+    if check and return_code != 0:
+        raise RuntimeError(f"{label} failed with exit code {return_code}")
+    return return_code
+
+
 def check_python():
     if sys.version_info < (3, 10):
         print(f"❌ Python 3.10+ required (found {sys.version_info.major}.{sys.version_info.minor})")
@@ -39,8 +62,12 @@ def check_python():
 
 def install_python_dependencies():
     print("\n📦 Installing Python dependencies...")
-    run_command([sys.executable, "-m", "pip", "install", "--upgrade", "pip"], check=True)
-    run_command([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"], check=True)
+    run_command_stream([sys.executable, "-m", "pip", "install", "--upgrade", "pip"], "Upgrading pip", check=True)
+    run_command_stream(
+        [sys.executable, "-m", "pip", "install", "-r", "requirements.txt"],
+        "Installing Python requirements",
+        check=True,
+    )
     print("✓ Python dependencies installed")
 
 
@@ -84,7 +111,7 @@ def install_ollama_windows():
     if not shutil.which("winget"):
         raise RuntimeError("winget not available to auto-install Ollama")
     print("⬇ Installing Ollama with winget...")
-    run_command(
+    run_command_stream(
         [
             "winget",
             "install",
@@ -94,6 +121,7 @@ def install_ollama_windows():
             "--accept-package-agreements",
             "--accept-source-agreements",
         ],
+        "Installing Ollama",
         check=True,
     )
 
@@ -137,8 +165,33 @@ def ensure_ollama() -> str:
 
 
 def pull_model(ollama_binary: str, model_name: str = DEFAULT_MODEL):
-    print(f"🤖 Pulling model: {model_name}")
-    run_command([ollama_binary, "pull", model_name], check=True)
+    print(f"\n🤖 Pulling model: {model_name}")
+    print("   (This can take several minutes; progress appears below)")
+
+    process = subprocess.Popen(
+        [ollama_binary, "pull", model_name],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,
+    )
+
+    last_line = ""
+    last_output_time = time.time()
+    if process.stdout is not None:
+        for line in process.stdout:
+            text = line.rstrip()
+            if not text:
+                continue
+            last_line = text
+            last_output_time = time.time()
+            print(f"   {text}")
+
+    return_code = process.wait()
+    if return_code != 0:
+        raise RuntimeError(f"Model pull failed ({return_code}): {last_line}")
+    if time.time() - last_output_time > 10:
+        print("   Finalizing model files...")
     print(f"✓ Model pulled: {model_name}")
 
 
