@@ -13,12 +13,6 @@ from pathlib import Path
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from PyQt6.QtGui import QFontDatabase, QIcon
-from PyQt6.QtWidgets import QApplication
-
-from ui.main_window import MainWindow
-from ui.splash_screen import SplashScreen
-
 
 def runtime_log_path() -> Path:
     return Path.home() / ".llamaphone" / "runtime.log"
@@ -42,6 +36,12 @@ def main():
     try:
         os.environ.setdefault("QT_OPENGL", "software")
         log_runtime(f"startup begin frozen={getattr(sys, 'frozen', False)}")
+
+        from PyQt6.QtGui import QFontDatabase, QIcon
+        from PyQt6.QtWidgets import QApplication
+
+        from ui.main_window import MainWindow
+        from ui.splash_screen import SplashScreen
 
         # Create application
         app = QApplication(sys.argv)
