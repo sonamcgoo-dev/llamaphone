@@ -254,7 +254,16 @@ llamaphone/
 
 ## Installation & Setup
 
-### Prerequisites
+### Option 1: Pre-built Installer (Recommended)
+
+1. Go to: **https://github.com/sonamcgoo-dev/llamaphone/releases**
+2. Download the latest `LlamaPhone_Setup_X.X.X.exe`
+3. Run the installer
+4. Launch from Start Menu
+
+### Option 2: Build from Source
+
+#### Prerequisites
 ```bash
 # Python 3.10+
 python --version
@@ -266,20 +275,37 @@ ollama --version
 # Download from: https://developer.android.com/studio/releases/platform-tools
 ```
 
-### Installation Steps
+#### Installation Steps
 ```bash
-# 1. Clone/install llamaphone
-pip install llamaphone
+# 1. Clone the repository
+git clone https://github.com/sonamcgoo-dev/llamaphone.git
+cd llamaphone
 
-# 2. Download AI model
-llamaphone download-model
+# 2. Install dependencies
+pip install -r requirements.txt
 
-# 3. Detect/setup ADB
-llamaphone setup-adb
+# 3. Download AI model (recommended)
+ollama pull qwen2.5-coder:7b
 
-# 4. Launch
-llamaphone
+# 4. Run the application
+python llamaphone.py
 ```
+
+#### Build Windows Executable
+
+1. Install **Inno Setup** from: https://jrsoftware.org/isinfo.php
+2. Run `build.bat`
+3. Find installer at: `installer\LlamaPhone_Setup_1.0.0.exe`
+
+### Option 3: GitHub Actions (Automatic Builds)
+
+Push a tag to trigger automatic build:
+```bash
+git tag v1.1.0
+git push origin v1.1.0
+```
+
+Download artifacts from: **https://github.com/sonamcgoo-dev/llamaphone/actions**
 
 ---
 

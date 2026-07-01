@@ -2,16 +2,16 @@
 
 <div align="center">
 
-![Python](https://img.shields.io/badge/Python-3.10+-00AAFF?style=for-the-badge)
-![License](https://img.shields.io/badge/License-MIT-FFB000?style=for-the-badge)
-![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-FF3333?style=for-the-badge)
-![GitHub](https://img.shields.io/github/stars/sonamcgoo-dev/llamaphone?style=for-the-badge)
+[![GitHub release](https://img.shields.io/github/v/release/sonamcgoo-dev/llamaphone?style=for-the-badge&color=33FF33)](https://github.com/sonamcgoo-dev/llamaphone/releases)
+[![Python](https://img.shields.io/badge/Python-3.10+-00AAFF?style=for-the-badge)](https://python.org)
+[![License](https://img.shields.io/badge/License-MIT-FFB000?style=for-the-badge)](LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-Windows-FF3333?style=for-the-badge)](https://github.com/sonamcgoo-dev/llamaphone/actions)
 
 ### 🤖 AI-Powered Mobile Repair Console
 
 *A retro CRT TV-styled desktop application for mobile device repair technicians*
 
-**[Features](#features)** • **[Installation](#installation)** • **[Build](#building)** • **[Documentation](#documentation)**
+**[📦 Download Installer](https://github.com/sonamcgoo-dev/llamaphone/releases)** • **[Features](#features)** • **[Documentation](#documentation)**
 
 </div>
 
@@ -89,45 +89,50 @@ python llamaphone.py
 
 ---
 
-## Building
+## Downloads
 
-### Windows Executable with Installer
+### Pre-built Installer (Recommended)
 
-1. **Download** the source code from GitHub
+📦 **Download from Releases:**
+👉 **[https://github.com/sonamcgoo-dev/llamaphone/releases](https://github.com/sonamcgoo-dev/llamaphone/releases)**
 
-2. **Install Python** 3.10+ from [python.org](https://python.org)
-
-3. **Install Inno Setup** (for installer):
-   - Download from: https://jrsoftware.org/isinfo.php
-
-4. **Run the build script:**
-   ```bash
-   build.bat
-   ```
-
-5. **Your executable is ready at:**
-   ```
-   dist\LlamaPhone.exe
-   ```
-
-### Create Installer
-
-```bash
-build.bat --all
-```
-
-This creates:
-- `dist\LlamaPhone.exe` - The main executable
-- `installer\LlamaPhone_Setup_1.0.0.exe` - Windows installer
+Simply download `LlamaPhone_Setup_1.0.0.exe` and run it!
 
 ### Build Options
 
-| Command | Description |
-|---------|-------------|
-| `build.bat` | Build single-file exe |
-| `build.bat --clean` | Clean build folders |
-| `build.bat --installer` | Build + create installer |
-| `build.bat --all` | Full build with installer |
+| Method | Description |
+|--------|-------------|
+| **GitHub Actions** | Push tag → auto-builds .exe + installer |
+| **Build Script** | Run `build.bat` locally |
+
+### Build from Source
+
+```bash
+# Clone repository
+git clone https://github.com/sonamcgoo-dev/llamaphone.git
+cd llamaphone
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run
+python llamaphone.py
+
+# Or build .exe
+build.bat
+```
+
+### GitHub Actions Auto-Build
+
+Every release automatically creates:
+- `dist\LlamaPhone.exe` - Portable executable
+- `installer\LlamaPhone_Setup_X.X.X.exe` - Windows installer
+
+**To trigger a build:**
+```bash
+git tag v1.0.1
+git push origin v1.0.1
+```
 
 ---
 
