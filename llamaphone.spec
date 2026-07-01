@@ -9,49 +9,23 @@ Usage:
     Or just double-click build.bat
 """
 
-import sys
-import os
 from pathlib import Path
+from PyInstaller.utils.hooks import collect_submodules
 
 block_cipher = None
 
 # Project root
-ROOT_DIR = Path(__file__).parent
+ROOT_DIR = Path(SPECPATH)
 
 # Main script
 main_script = str(ROOT_DIR / "llamaphone.py")
 
-# Hidden imports for PyQt6 and other dependencies
+# Hidden imports for PyQt6 and application modules
 hiddenimports = [
-    # PyQt6 core
     "PyQt6.QtCore",
     "PyQt6.QtGui",
     "PyQt6.QtWidgets",
     "PyQt6.sip",
-    
-    # Application modules
-    "ui",
-    "ui.splash_screen",
-    "ui.main_window",
-    "ui.terminal_screen",
-    "ui.control_panel",
-    "ui.styles",
-    "ai",
-    "ai.ollama_client",
-    "ai.tools",
-    "ai.tools.adb_tools",
-    "ai.tools.fastboot_tools",
-    "ai.tools.device_tools",
-    "modules",
-    "modules.bypass",
-    "modules.exploits",
-    "modules.drivers",
-    "core",
-    "core.auth",
-    "core.config",
-    "core.logger",
-    
-    # HTTP client
     "httpx",
     "httpcore",
     "anyio",
@@ -59,17 +33,11 @@ hiddenimports = [
     "h11",
     "idna",
     "sniffio",
-    
-    # JSON handling
-    "json",
-    "pickle",
-    
-    # Socket for network tools
-    "socket",
-    "concurrent.futures",
-    "threading",
-    "contextlib",
 ]
+hiddenimports += collect_submodules("ui")
+hiddenimports += collect_submodules("ai")
+hiddenimports += collect_submodules("modules")
+hiddenimports += collect_submodules("core")
 
 # Exclude patterns
 excludes = [
@@ -87,6 +55,10 @@ excludes = [
 datas = [
     (str(ROOT_DIR / "data"), "data"),
 ]
+
+assets_dir = ROOT_DIR / "assets"
+if assets_dir.exists():
+    datas.append((str(assets_dir), "assets"))
 
 # Icons (if present)
 icon_path = None

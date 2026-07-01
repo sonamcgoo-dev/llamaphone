@@ -36,7 +36,7 @@ if errorlevel 1 (
 
 REM Install build dependencies
 echo Installing build dependencies...
-pip install pyinstaller PyQt6 httpx --quiet
+python -m pip install pyinstaller PyQt6 httpx --quiet
 if errorlevel 1 (
     echo ERROR: pip install failed.
     pause & exit /b 1
@@ -46,7 +46,7 @@ echo.
 REM Build using the spec file (includes hidden imports, data files, and icon)
 echo Building LlamaPhone.exe...
 echo.
-pyinstaller llamaphone.spec --noconfirm
+python -m PyInstaller llamaphone.spec --noconfirm --clean
 
 if errorlevel 1 (
     echo.
