@@ -23,13 +23,14 @@ class AIWorker(QObject):
     finished = pyqtSignal(str)
     failed = pyqtSignal(str)
 
-    def __init__(self, user_input: str):
+    def __init__(self, user_input: str, model_name: str | None = None):
         super().__init__()
         self.user_input = user_input
+        self.model_name = model_name
 
     def run(self):
         try:
-            client = OllamaClient()
+            client = OllamaClient(model=self.model_name) if self.model_name else OllamaClient()
             if not client.is_available():
                 self.failed.emit("Ollama is not running. Start it, then try again.")
                 return
@@ -203,7 +204,7 @@ class TerminalScreen(QWidget):
         self.chat_layout.addWidget(self.typing_indicator)
 
         self.ai_thread = QThread(self)
-        self.ai_worker = AIWorker(text)
+        self.ai_worker = AIWorker(text, self.selected_model_name())
         self.ai_worker.moveToThread(self.ai_thread)
         self.ai_thread.started.connect(self.ai_worker.run)
         self.ai_worker.finished.connect(self.on_ai_response)
@@ -212,6 +213,17 @@ class TerminalScreen(QWidget):
         self.ai_worker.failed.connect(self.ai_thread.quit)
         self.ai_thread.finished.connect(self.ai_thread.deleteLater)
         self.ai_thread.start()
+
+    def selected_model_name(self) -> str | None:
+        """Read active model from main window settings when available."""
+        parent = self.parent()
+        if parent is not None and hasattr(parent, "model_combo"):
+            model_combo = parent.model_combo
+            if model_combo is not None and hasattr(model_combo, "currentText"):
+                model_name = model_combo.currentText().strip()
+                if model_name:
+                    return model_name
+        return None
 
     def remove_typing_indicator(self):
         if self.typing_indicator is not None:

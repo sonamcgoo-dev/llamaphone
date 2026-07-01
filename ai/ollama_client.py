@@ -316,31 +316,27 @@ class LlamaPhoneAI:
     LlamaPhone-specific AI wrapper with tools and prompts.
     """
 
-    SYSTEM_PROMPT = """You are LlamaPhone, an expert AI assistant for mobile device repair.
+    SYSTEM_PROMPT = """You are LlamaPhone, a practical AI assistant for lawful mobile repair and diagnostics.
 
-You have access to tools for:
-- ADB commands (connect, shell, install, push, pull, etc.)
-- Fastboot commands (flash, unlock, reboot, etc.)
-- Device diagnostics and information
-- Script generation for automation
+You help technicians with:
+- ADB/Fastboot usage and troubleshooting
+- Device connection and recovery workflows
+- Firmware flashing preparation and validation
+- Root/bootloader guidance on owned/authorized devices
+- Script generation for repeatable maintenance tasks
 
-Guidelines:
-1. Always prioritize device safety - warn before destructive operations
-2. Explain what commands do before executing them
-3. Provide step-by-step guidance when needed
-4. Generate Python scripts when helpful for automation
-5. Reference known exploits only for educational purposes on authorized devices
+Behavior requirements:
+1. Be direct, concrete, and step-by-step.
+2. Prefer safe diagnostics first; warn before destructive actions.
+3. If information is missing, ask for the minimum needed detail.
+4. When a request is risky or unauthorized, refuse briefly and provide safe alternatives.
+5. Focus on repair outcomes, command correctness, and verification steps.
+"""
 
-Commands you can help with:
-- Device connection (USB/WiFi)
-- FRP bypass procedures
-- Bootloader unlock guides
-- Root access setup (Magisk, Shizuku, etc.)
-- Firmware flashing
-- Debugging and diagnostics
-- Custom script generation
-
-Remember: Only assist with operations on devices you or your customer own!"""
+    FALLBACK_PROMPT = """You are a concise Android repair assistant.
+Give practical ADB/Fastboot troubleshooting and recovery steps for authorized devices.
+Do not provide policy lectures unless absolutely required. Keep answers short and actionable.
+"""
 
     def __init__(self, ollama_client: OllamaClient):
         self.client = ollama_client
@@ -362,10 +358,47 @@ Remember: Only assist with operations on devices you or your customer own!"""
 
     def chat(self, message: str) -> dict[str, Any]:
         """Send a chat message to the AI."""
-        return self.client.chat(
+        result = self.client.chat(
             message=message,
             system_prompt=self.SYSTEM_PROMPT
         )
+        content = result.get("content", "").lower()
+        refusal_markers = (
+            "i can’t help",
+            "i can't help",
+            "i cannot help",
+            "i can’t assist",
+            "i can't assist",
+            "not able to help with",
+            "cannot comply",
+            "i’m unable to",
+            "i'm unable to",
+            "i'm sorry, but",
+            "i’m sorry, but",
+            "i cannot assist with",
+            "i can't assist with",
+            "i can’t assist with",
+        )
+        if any(marker in content for marker in refusal_markers):
+            second_try = self.client.chat(
+                message=message,
+                system_prompt=self.FALLBACK_PROMPT
+            )
+            second_content = second_try.get("content", "").lower()
+            if not any(marker in second_content for marker in refusal_markers):
+                return second_try
+
+            final_prompt = (
+                "Provide practical Android repair guidance for an authorized device.\n"
+                "Focus on diagnostics and recovery steps only.\n\n"
+                f"User request: {message}"
+            )
+            generated = self.client.generate(final_prompt).strip()
+            if generated:
+                return {"content": generated, "tool_calls": [], "done": True}
+            return second_try
+
+        return result
 
     def generate_script(self, task: str) -> str:
         """Generate a repair automation script."""
